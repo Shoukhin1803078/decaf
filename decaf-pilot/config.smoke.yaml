@@ -3,7 +3,7 @@ data:
   hf_name: hotpotqa/hotpot_qa
   hf_config: distractor
   split: validation
-  n_questions: 100
+  n_questions: 3
   n_questions_secondary: 60
   cache_dir: data
 retriever: bm25
@@ -18,21 +18,14 @@ scaling:
   lengths:
   - 128
   - 256
-  - 512
-  - 1024
-  - 2048
-  - 4096
-  - 6144
   long_lengths: []
   n_out:
   - 16
   - 32
-  - 64
-  - 128
   n_out_base: 32
-  replicates: 3
-  replicates_long: 2
-  num_ctx: 8192
+  replicates: 1
+  replicates_long: 1
+  num_ctx: 20480
   question: Describe in detail how a bicycle works, listing its main parts and what
     each does.
 compression:
@@ -41,27 +34,13 @@ compression:
   lambda_default: 6.0
   methods:
   - full
-  - closed_book
-  - fixed_0.8
-  - fixed_0.6
   - fixed_0.5
-  - fixed_0.4
-  - fixed_0.2
   - rel_iso
-  - decaf_lam2
-  - decaf_lam4
   - decaf_lam6
-  - decaf_lam10
-  - decaf_lam15
-  - decaf_nocov_lam6
   - decaf_nocost_lam6
-  - decaf_noreorder_lam6
-  - decaf_absms_lam0.001
   - decaf_absms_lam0.002
-  - decaf_absms_lam0.005
   - decaf_ce_lam6
-  - decaf_ce_nocost_lam6
-  - fixed_ce_0.2
+  - closed_book
   methods_secondary:
   - full
   - fixed_0.5
@@ -72,8 +51,8 @@ compression:
   - decaf_absms_lam0.002
   - decaf_ce_lam6
 kv_study:
-  n_questions: 12
-  repeats: 3
+  n_questions: 2
+  repeats: 1
   num_ctx: 4096
 scorer:
   ce_model: BAAI/bge-reranker-base
@@ -88,9 +67,8 @@ ollama:
 preflight:
   max_load1: 2.0
   min_mem_gb: 3.0
-  max_swap_used_pct: 50
 paths:
-  scaling_cache: cache/scaling_v2.jsonl
-  compress_cache: cache/compression_v2.jsonl
-  kv_cache: cache/kv_study.jsonl
-  results: results
+  scaling_cache: cache/smoke_scaling.jsonl
+  compress_cache: cache/smoke_compression.jsonl
+  kv_cache: cache/smoke_kv.jsonl
+  results: results/smoke

@@ -1,4 +1,16 @@
-# DECAF — Preliminary Results (smoke test)
+# DECAF — Preliminary Results (Phase 0 smoke test)
+
+> **Status: superseded in methodology, retained for its numbers.**
+> This is the Phase-0 pilot (30 questions, one model, one quantization, BM25 scorer,
+> fixed 32-token generations). Its measurements were taken on a quiet machine and the
+> curves in §1–2 remain the best clean `TPOT(L)` / `prefill(L)` data in the project.
+> **Four caveats discovered after it was written** are recorded in §6 — two of them
+> affect how §3 and §4 should be read.
+>
+> **This is currently the only valid results file in the project.** The Phase-1 full
+> study is built and ready but has not yet produced usable measurements (three runs
+> were destroyed by memory/CPU pressure; see `STATUS.md` §0). When it succeeds it will
+> write `RESULTS.md` here and supersede this file.
 
 CPU-only, `qwen2.5:3b-instruct` via Ollama (llama.cpp) · 10 scaling runs · 210 compression runs
 
@@ -58,3 +70,50 @@ CPU-only, `qwen2.5:3b-instruct` via Ollama (llama.cpp) · 10 scaling runs · 210
 - §2 gives a concrete **L\*** from the fitted curves plus measured compressor overhead.
 - §3–4 give the **quality–latency–grounding Pareto** and the CPU-awareness ablation.
 - Next: Q4/Q8 and 3B/7B pairs, long-context sets (LongBench), a cross-encoder scorer, and more queries.
+
+---
+
+## 6. Caveats discovered after this pilot (added 2026-10-09)
+
+Four issues were found while building the Phase-1 study. They do not invalidate the
+latency curves in §1–2, but two of them change how §3–4 should be read.
+
+**(a) The F1 numbers are depressed by verbosity, and the bias correlates with context length.**
+The reader was answering correctly but in full sentences: for gold `flotilla` it produced
+*"Iqbal F. Qadir was on a flotilla when he participated in the attack…"*, scoring EM 0 and
+F1 0.10 despite containing the right answer. Because a shorter context elicits a more direct
+answer, this length penalty is **correlated with the compression ratio**. The headline
+"moderate compression *improves* F1 (0.221 → 0.285)" in §3 may therefore be partly a prompt
+artifact rather than distractor harm. Phase 1 adds a short-answer instruction plus
+`contains_gold` and `answer_recall`, which are invariant to verbosity, and will re-test it.
+
+**(b) The CPU-cost ablation could not have shown an effect.**
+`MarginalCPUCost` was `tokens_i / tokens_total`. Since the measured cost curve is *linear* in
+tokens, that normalised cost is proportional to token count up to a constant — and the constant
+is absorbed by `λ`. "CPU-aware cost" was therefore mathematically indistinguishable from
+"token-proportional cost", so the §4 finding that the CPU-cost term adds nothing is a
+**tautology, not evidence**. Phase 1 adds an `absolute_ms` cost mode (cost in milliseconds from
+the fitted curve for that specific model and quantization, `λ` in quality-per-millisecond),
+which is the only form in which the CPU-awareness claim is testable — and which predicts that
+the same `λ` selects differently under Q4 vs Q8.
+
+**(c) `T_compress = 1.36 ms` is BM25, not the proposal's specified scorer.**
+Proposal §12.1 specifies a `bge-reranker-base` cross-encoder. A first measurement of that
+scorer on this CPU gave `T_compress` three orders of magnitude larger than BM25. If that
+survives clean measurement, the conclusion in §2 that "compressor overhead is negligible next
+to prefill cost" **holds only for BM25** and is reversed for the proposal's own scorer — which
+would make the compressor violate the design principle of proposal §5 ("the compressor must be
+cheaper than the decoding it saves"). Phase 1 measures both scorers.
+
+**(d) The H1 refutation is conditional on a 32-token generation.**
+Decode cost scales with `N_out` while prefill does not, so the crossover `L ≈ 414` is a
+property of *this* generation length, not of CPU RAG in general. The fitted curves imply the
+crossover moves right as `N_out` grows. Phase 1 sweeps `N_out ∈ {16, 32, 64, 128}` so H1 is
+tested as a surface over `(L, N_out)` rather than a single line.
+
+### What stands unchanged
+
+- The `prefill(L)` curve (≈4.1 ms/token, r²=1.00) and the near-flat `TPOT(L)`.
+- The qualitative direction of H1 on this hardware: **prefill dominates, not decode.**
+- The monotone degradation of grounding with retained evidence (0.833 → 0.60 → 0.20),
+  which is measured on retained gold sentences and is unaffected by (a).

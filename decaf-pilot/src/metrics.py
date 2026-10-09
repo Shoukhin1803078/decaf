@@ -56,9 +56,37 @@ def clean_prediction(raw: str) -> str:
     return text
 
 
+def contains_gold(pred: str, gold: str) -> float:
+    """Whether the gold answer appears verbatim in the prediction.
+
+    EM and F1 both punish a correct answer wrapped in a sentence ("X was on a
+    *flotilla* when ..." scores F1 0.10 against gold "flotilla"). Because a
+    shorter context elicits a more direct answer, that length penalty correlates
+    with the compression ratio and would otherwise masquerade as a quality
+    effect of compression. This metric is invariant to that.
+    """
+    p, g = normalize_answer(pred), normalize_answer(gold)
+    return float(bool(g) and g in p)
+
+
+def answer_recall(pred: str, gold: str) -> float:
+    """Fraction of gold answer tokens present in the prediction."""
+    pt, gt = set(normalize_answer(pred).split()), normalize_answer(gold).split()
+    if not gt:
+        return float("nan")
+    return sum(1 for t in gt if t in pt) / len(gt)
+
+
 def score_answer(raw: str, gold: str) -> Dict[str, float]:
     pred = clean_prediction(raw)
-    return {"em": exact_match(pred, gold), "f1": f1_score(pred, gold), "pred": pred}
+    return {
+        "em": exact_match(pred, gold),
+        "f1": f1_score(pred, gold),
+        "contains_gold": contains_gold(pred, gold),
+        "answer_recall": answer_recall(pred, gold),
+        "pred_tokens": float(len(pred.split())),
+        "pred": pred,
+    }
 
 
 # --- cost accounting -------------------------------------------------------

@@ -1,0 +1,73 @@
+{
+  "n_scaling": 23,
+  "n_compression": 0,
+  "n_kv": 0,
+  "model_primary": "qwen2.5:3b-instruct",
+  "num_ctx_scaling": 20480,
+  "num_ctx_compression": 4096,
+  "hardware": "Intel(R) Core(TM) i7-8665U CPU @ 1.90GHz, 4 cores / 8 threads, 17 GB RAM, Linux",
+  "tpot_fit": {
+    "intercept_ms": 164.4489854014599,
+    "slope_ms_per_tok": 0.009817518248175222,
+    "r2": 1.0
+  },
+  "prefill_fit": {
+    "intercept_ms": -7121.45471532845,
+    "slope_ms_per_tok": 90.41005839416057,
+    "r2": 1.0
+  },
+  "scaling_table": [
+    {
+      "L": 128,
+      "prompt_tokens": 252.0,
+      "prefill_ms": 15661.88,
+      "decode_ms": 500.769,
+      "tpot_ms": 166.923,
+      "ttft_ms": 16484.788,
+      "e2e_ms": 17025.501,
+      "total_ms": 16148.149,
+      "output_tokens": 3.0,
+      "achieved_bw_gbs": 11.618,
+      "n": 3,
+      "decode_share": 0.031,
+      "prefill_ms_per_tok": 62.15
+    },
+    {
+      "L": 256,
+      "prompt_tokens": 389.0,
+      "prefill_ms": 28048.058,
+      "decode_ms": 504.804,
+      "tpot_ms": 168.268,
+      "ttft_ms": 28792.515,
+      "e2e_ms": 29303.598,
+      "total_ms": 28552.862,
+      "output_tokens": 3.0,
+      "achieved_bw_gbs": 11.555,
+      "n": 3,
+      "decode_share": 0.018,
+      "prefill_ms_per_tok": 72.103
+    }
+  ],
+  "median_output_tokens": 3.0,
+  "decode_prefill_crossover_L": 84.25260708101965,
+  "stream": {
+    "stream_copy_gbs": 7.900847206956294,
+    "stream_triad_gbs": 4.9509372752663054,
+    "stream_peak_gbs": 7.900847206956294,
+    "array_mb": 256
+  },
+  "methods": [],
+  "stats": [],
+  "break_even": {},
+  "contention_note": "median load1 during runs = 5.38, median free RAM = 5.8 GB",
+  "figures": [
+    "fig01_scaling_core.png",
+    "fig02_genlen_crossover.png",
+    "fig03_tpot_by_genlen.png",
+    "fig04_latency_decomposition.png",
+    "fig05_roofline.png",
+    "fig23_crossover_heatmap.png",
+    "fig19_contention.png",
+    "fig35_study_cost.png"
+  ]
+}

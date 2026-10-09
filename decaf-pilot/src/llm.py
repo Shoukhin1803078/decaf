@@ -16,12 +16,25 @@ import requests
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 
+# HotpotQA answers are short spans, so the reader is instructed to emit one.
+# Without this the model writes a full sentence that contains the correct span,
+# which collapses EM to 0 and F1 to ~0.1 through length alone -- and because
+# shorter contexts elicit more direct answers, that bias correlates with the
+# compression ratio and would confound the quality comparison.
+# An explicit "reply yes or no for yes/no questions" clause was tried and
+# removed: the model over-applied it, answering "yes" to open questions such as
+# "what was he on?". The rule below asks only for brevity.
+_SHORT_ANSWER_RULE = (
+    "Reply with the answer only: a word or a short phrase, copied from the context "
+    "when possible. Do not write a sentence and do not explain."
+)
+
 def build_prompt(question: str, contexts: List[str], titles: Optional[List[str]] = None) -> str:
     """Context-grounded prompt; empty context => closed-book (no retrieval)."""
     if not contexts:
         return (
-            "Answer the question using only your own knowledge. "
-            "Give a short, direct answer.\n\n"
+            "Answer the question using only your own knowledge.\n"
+            f"{_SHORT_ANSWER_RULE}\n\n"
             f"Question: {question}\nAnswer:"
         )
     titles = titles or ["" for _ in contexts]
@@ -31,8 +44,8 @@ def build_prompt(question: str, contexts: List[str], titles: Optional[List[str]]
         blocks.append(f"{header} {c}")
     context_str = "\n".join(blocks)
     return (
-        "Answer the question using the provided context. "
-        "Give a short, direct answer.\n\n"
+        "Answer the question using the provided context.\n"
+        f"{_SHORT_ANSWER_RULE}\n\n"
         f"Context:\n{context_str}\n\n"
         f"Question: {question}\nAnswer:"
     )
@@ -54,6 +67,15 @@ class OllamaClient:
             return r.status_code == 200
         except requests.RequestException:
             return False
+
+    def list_models(self) -> List[str]:
+        """Model tags available on the server (empty on failure, so it never blocks a run)."""
+        try:
+            r = requests.get(f"{self.host}/api/tags", timeout=10)
+            r.raise_for_status()
+            return [m["name"] for m in r.json().get("models", [])]
+        except (requests.RequestException, ValueError, KeyError):
+            return []
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=1, max=8), reraise=True)
     def generate(self, prompt: str) -> dict:
