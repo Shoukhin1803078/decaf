@@ -32,6 +32,7 @@ from .metrics import score_answer
 from .retriever import rank_paragraphs
 from .run_experiments import JsonlCache, _timing
 from .scorer_v2 import CrossEncoderScorer
+from .select import relevance_scores
 from .select_v2 import build_context, select_v2
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -215,6 +216,13 @@ def run_compression(cfg: dict, client: OllamaClient, model: dict,
         if not sentences:
             continue
         rel, ce_ms = _ce_scores(scorer, cfg, dataset_tag, ex, sentences)
+        # Sec.17 scorer ablation: BM25 relevance as the "scorer off" condition.
+        bm_ms = 0.0
+        rel_bm = None
+        if any(m.startswith("bm25_") for m in methods):
+            _t0 = time.perf_counter()
+            rel_bm = relevance_scores(sentences, ex.question)
+            bm_ms = (time.perf_counter() - _t0) * 1000.0
         # DECAF first: its retained count defines the iso-budget baseline.
         decaf_idx, _ = select_v2(sentences, ex.question, rel, primary, lam=lam)
         n_iso = len(decaf_idx)
@@ -239,9 +247,12 @@ def run_compression(cfg: dict, client: OllamaClient, model: dict,
                 evidence_recall = float("nan")
                 evidence_precision = float("nan")
             else:
-                idx, stats = select_v2(sentences, ex.question, rel, method, lam=lam, n_iso=n_iso)
+                if method.startswith("bm25_"):
+                    rel_used, ce_eff, base_method = rel_bm, bm_ms, method[5:]
+                else:
+                    rel_used, ce_eff, base_method = rel, ce_ms, method
+                idx, stats = select_v2(sentences, ex.question, rel_used, base_method, lam=lam, n_iso=n_iso)
                 ctx = build_context(sentences, idx, titles)
-                ce_eff = ce_ms
                 retained = {sentences[i].strip() for i in idx}
                 inter = len(retained & gold)
                 evidence_recall = inter / len(gold) if gold else float("nan")

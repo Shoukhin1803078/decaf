@@ -52,7 +52,7 @@ crossover:
 
 # E2/E3/E4/E7 + Sec.17 ablation: compression methods
 compression:
-  methods: [full, fixed_0.5, fixed_0.2, rel_iso, decaf_lam2, decaf_lam6, decaf_lam15, decaf_nocov_lam6, decaf_noreorder_lam6, llmlingua_0.5, llmlingua_0.2]
+  methods: [full, fixed_0.8, fixed_0.6, fixed_0.5, fixed_0.4, fixed_0.2, rel_iso, decaf_lam2, decaf_lam6, decaf_lam15, decaf_nocov_lam6, decaf_noreorder_lam6, bm25_decaf_lam6, llmlingua_0.5, llmlingua_0.2]
   decaf_primary: decaf_lam6
   lambda: 1.5
   fixed_ratios: [0.5, 0.2]

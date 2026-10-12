@@ -31,7 +31,10 @@ plt.rcParams.update({"figure.dpi": 130, "font.size": 9, "axes.grid": True, "grid
 
 LABEL = {
     "full": "Full context",
+    "fixed_0.8": "Fixed 80%",
+    "fixed_0.6": "Fixed 60%",
     "fixed_0.5": "Fixed 50%",
+    "fixed_0.4": "Fixed 40%",
     "fixed_0.2": "Fixed 20%",
     "rel_iso": "Relevance top-m (iso)",
     "decaf_lam2": "DECAF λ=2",
@@ -41,10 +44,12 @@ LABEL = {
     "decaf_noreorder_lam6": "DECAF no-reorder (λ=6)",
     "llmlingua_0.5": "LLMLingua-2 (50%)",
     "llmlingua_0.2": "LLMLingua-2 (20%)",
+    "bm25_decaf_lam6": "DECAF λ=6 (BM25 scorer)",
 }
-METHOD_ORDER = ["full", "fixed_0.5", "fixed_0.2", "llmlingua_0.5", "llmlingua_0.2", "rel_iso",
-                "decaf_nocov_lam6", "decaf_noreorder_lam6", "decaf_lam2",
-                "decaf_lam6", "decaf_lam15"]
+METHOD_ORDER = ["full", "fixed_0.8", "fixed_0.6", "fixed_0.5", "fixed_0.4", "fixed_0.2",
+                "llmlingua_0.5", "llmlingua_0.2", "rel_iso",
+                "decaf_nocov_lam6", "decaf_noreorder_lam6", "bm25_decaf_lam6",
+                "decaf_lam2", "decaf_lam6", "decaf_lam15"]
 
 
 def _safe(name, fn, log):
@@ -779,6 +784,50 @@ def main() -> None:
             summary["figures"].append("fig_v2_ablation_bars.png")
         _safe("ablation", fig_ablation, log)
 
+        def fig_ratio_grid():
+            fixed = ["fixed_0.2", "fixed_0.4", "fixed_0.5", "fixed_0.6", "fixed_0.8", "full"]
+            fig, ax = plt.subplots(1, 2, figsize=(11, 4.0))
+            for m in models:
+                for ds, mk in [("hotpot", "o"), ("twowiki", "s")]:
+                    sub = A[(A["model_label"] == m["label"]) & (A["dataset"] == ds)
+                            & (A["method"].isin(fixed))].sort_values("retained_ratio")
+                    if sub.empty:
+                        continue
+                    ax[0].plot(sub["retained_ratio"], sub["f1"], mk + "-", color=mcolor[m["label"]], ms=4,
+                               alpha=0.85, label=f"{m['label']}·{ds}")
+                    ax[1].plot(sub["retained_ratio"], sub["gold_in_evidence"], mk + "-",
+                               color=mcolor[m["label"]], ms=4, alpha=0.85)
+            ax[0].set_xlabel("retained ratio"); ax[0].set_ylabel("F1")
+            ax[0].set_title("E2: quality vs compression ratio")
+            ax[1].set_xlabel("retained ratio"); ax[1].set_ylabel("gold-in-evidence")
+            ax[1].set_title("E2: grounding vs compression ratio")
+            ax[0].legend(fontsize=6, ncol=2)
+            fig.tight_layout(); fig.savefig(os.path.join(out, "fig_v2_ratio_grid.png")); plt.close(fig)
+            summary["figures"].append("fig_v2_ratio_grid.png")
+        _safe("ratio_grid", fig_ratio_grid, log)
+
+        def fig_scorer_ablation():
+            pm = cfg["compression"]["decaf_primary"]
+            ds_sel = "hotpot" if "hotpot" in A["dataset"].unique() else A["dataset"].iloc[0]
+            fig, axes = plt.subplots(1, 3, figsize=(13, 3.8))
+            x = np.arange(len(models)); w = 0.4
+            panels = [("f1", "F1"), ("gold_in_evidence", "gold-in-evidence"), ("compress_ms", "T_compress (ms)")]
+            for j, (col, ttl) in enumerate(panels):
+                ce = [float(A[(A["model_label"] == m["label"]) & (A["dataset"] == ds_sel)
+                              & (A["method"] == pm)][col].mean()) for m in models]
+                bm = [float(A[(A["model_label"] == m["label"]) & (A["dataset"] == ds_sel)
+                              & (A["method"] == "bm25_decaf_lam6")][col].mean()) for m in models]
+                axes[j].bar(x - w / 2, ce, w, label="cross-encoder")
+                axes[j].bar(x + w / 2, bm, w, label="BM25 (scorer off)")
+                axes[j].set_xticks(x); axes[j].set_xticklabels([m["label"] for m in models], fontsize=6, rotation=15)
+                axes[j].set_title(ttl)
+            axes[2].set_yscale("log")
+            axes[0].legend(fontsize=7)
+            fig.suptitle(f"Sec.17 scorer ablation (DECAF λ=6, {ds_sel})", y=1.04)
+            fig.tight_layout(); fig.savefig(os.path.join(out, "fig_v2_scorer_ablation.png"), bbox_inches="tight"); plt.close(fig)
+            summary["figures"].append("fig_v2_scorer_ablation.png")
+        _safe("scorer_ablation", fig_scorer_ablation, log)
+
         # --------- statistics ---------
         stats = {}
         primary = cfg["compression"]["decaf_primary"]
@@ -995,7 +1044,39 @@ def _write_report(out, cfg, summary, S, cp, log):
         if arows:
             L.append("Ablation (coverage / reorder / CPU-relevance-only vs full DECAF λ6):\n")
             L.append(pd.DataFrame(arows).to_markdown(index=False) + "\n")
-        L.append("Figures: `fig_v2_lambda_sweep.png`, `fig_v2_ablation_bars.png`.\n")
+
+        ds_r = "hotpot" if "hotpot" in gt["dataset"].unique() else sorted(gt["dataset"].unique())[0]
+        ratio_meths = ["fixed_0.2", "fixed_0.4", "fixed_0.5", "fixed_0.6", "fixed_0.8", "full"]
+        rrows = []
+        for mdl in sorted(gt["model_label"].unique()):
+            for rm in ratio_meths:
+                r = gt[(gt["dataset"] == ds_r) & (gt["model_label"] == mdl) & (gt["method"] == rm)]
+                if r.empty:
+                    continue
+                r = r.iloc[0]
+                rrows.append({"model": mdl, "method": LABEL.get(rm, rm), "F1": round(r["f1"], 3),
+                              "gold-in-ev": round(r["gold_in_ev"], 3), "retained": round(r["retained"], 3),
+                              "S_net": round(r["net_x"], 2)})
+        if rrows:
+            L.append(f"**E2 — compression-ratio grid ({ds_r}):**\n")
+            L.append(pd.DataFrame(rrows).to_markdown(index=False) + "\n")
+
+        srows2 = []
+        for mdl in sorted(gt["model_label"].unique()):
+            for method, lab in [("decaf_lam6", "cross-encoder"), ("bm25_decaf_lam6", "BM25 (scorer off)")]:
+                r = gt[(gt["dataset"] == ds_r) & (gt["model_label"] == mdl) & (gt["method"] == method)]
+                if r.empty:
+                    continue
+                r = r.iloc[0]
+                srows2.append({"model": mdl, "scorer": lab, "F1": round(r["f1"], 3),
+                               "gold-in-ev": round(r["gold_in_ev"], 3), "retained": round(r["retained"], 3),
+                               "T_c (ms)": round(r["t_c"], 2)})
+        if srows2:
+            L.append(f"**Sec.17 — scorer ablation ({ds_r}):**\n")
+            L.append(pd.DataFrame(srows2).to_markdown(index=False) + "\n")
+
+        L.append("Figures: `fig_v2_lambda_sweep.png`, `fig_v2_ablation_bars.png`, "
+                 "`fig_v2_ratio_grid.png`, `fig_v2_scorer_ablation.png`.\n")
 
         # ---------------- 5. statistics ----------------
         L.append("## 5. Paired statistics (bootstrap CI, McNemar, Holm)\n")

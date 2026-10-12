@@ -3,8 +3,8 @@
 **Date:** 2026-10-12
 **Scope:** Phase 1 (v2) — **full experiments** for the DECAF proposal
 (*"When Does Context Compression Accelerate CPU RAG? A Decode-Centric Study"*).
-**State:** ✅ Complete, reproducible end-to-end. 2,796 runs across 4 model×quant configs
-(3B/7B × Q4_K_M/Q8_0) × 2 datasets; 37 figures + report in `results_v2/`.
+**State:** ✅ Complete, reproducible end-to-end. 3,756 runs across 4 model×quant configs
+(3B/7B × Q4_K_M/Q8_0) × 2 datasets; 39 figures + report in `results_v2/`.
 The Phase-0 pilot is preserved (§3) and superseded.
 
 Location: `decaf-pilot/`
@@ -23,8 +23,8 @@ Location: `decaf-pilot/`
 | Generation sweep | — | N_out ∈ {16, 64, 128} (crossover) |
 | Secondary (H5) | — | prefix/KV reuse + prefetch |
 | Statistics | — | bootstrap CI · McNemar · Holm |
-| Runs | 220 | **2,796** |
-| Deliverables | `results/` | `results_v2/` (37 figures, `FULL_RESULTS_v2.md`) |
+| Runs | 220 | **3,756** |
+| Deliverables | `results/` | `results_v2/` (39 figures, `FULL_RESULTS_v2.md`) |
 
 ---
 
@@ -32,16 +32,16 @@ Location: `decaf-pilot/`
 
 ### 1.1 What was done
 
-Matrix: **4 model×quant configs × 2 datasets × 11 methods**, plus scaling, crossover and an
+Matrix: **4 model×quant configs × 2 datasets × 15 methods**, plus scaling, crossover and an
 H5 micro-study. All runs are cached (resumable, append-only JSONL); nothing from Phase 0 was modified.
 
 | Family | Runs | Description |
 |---|---:|---|
 | Scaling (E1/E8) | 56 | TPOT(L)/prefill(L) at L ∈ {256 … 16384}, 2 reps × 4 configs |
 | Crossover (H1) | 36 | decode share vs N_out ∈ {16,64,128} at L ∈ {512,2048,8192} × 4 configs |
-| Compression (E2–E7, E9) | 2,640 | 4 configs × 2 datasets × 30 q × 11 methods |
+| Compression (E2–E7, E9) | 3,600 | 4 configs × 2 datasets × 30 q × 15 methods |
 | H5 secondary | 64 | cold/warm/partial TTFT prefix-cache study × 4 configs × 2 lengths |
-| **Total** | **2,796** | 3B/7B × Q4_K_M/Q8_0 |
+| **Total** | **3,756** | 3B/7B × Q4_K_M/Q8_0 |
 
 **New code (all additive, `*_v2`):**
 
@@ -97,6 +97,13 @@ longer trivial: compression is a net latency loss below it, a net win above.
   smaller models (distractor harm) but *hurts* the 7B on HotpotQA; grounding falls monotonically with
   retained evidence (0.833 full → 0.633).
 - **E9 generalization:** 2Wiki is harder (best F1 0.336); same qualitative ordering.
+- **E2 — ratio grid (0.2/0.4/0.5/0.6/0.8):** quality is **non-monotone** — the 3B peaks at ~50%
+  retention (F1 0.330 vs 0.199 at full context), the 7B is ~flat from 60% up (0.584–0.595); grounding
+  rises monotonically with retention (0.667 → 0.833). At **80% retention S_net ≈ 1.0×** (the
+  compressor's ~960 ms overhead cancels the smaller prefill saving).
+- **§17 — scorer ablation (cross-encoder vs BM25):** BM25 costs ~1.9 ms vs the cross-encoder's ~989 ms,
+  yet the CE buys only small gains (7B Q8: F1 0.556 vs 0.539, gold-in-ev 0.633 vs 0.600) — on CPU the
+  CE's ~500× cost rarely pays for itself.
 
 **Baseline — LLMLingua-2.** Its own compressor cost (~1.0–2.5 s) exceeds the cross-encoder's, so its
 S_net (≈1.0–1.8×) trails DECAF's (≈1.5–4.5×), and DECAF keeps more gold evidence at aggressive ratios.
@@ -116,10 +123,10 @@ are not significant after correction — reported honestly, with the Pareto fron
 - `FULL_RESULTS_v2.md` — 8 sections (0 headline · 1 scaling · 2 break-even · 3 compression ·
   4 λ/ablation · 5 statistics · 6 H5 · 7 figure index).
 - `summary_v2.json` — all fitted curves, per-method stats, break-even, H5, paired tests.
-- **37 figures**: scaling (TPOT/prefill/TTFT/E2E/decode-share/RSS/panel), crossover,
+- **39 figures**: scaling (TPOT/prefill/TTFT/E2E/decode-share/RSS/panel), crossover,
   break-even curves + L* bar + overhead-vs-savings, Pareto (F1×E2E, ×TTFT, ×retained, frontier),
-  TTFT-vs-TPOT, grounding, λ-sweep, ablation, method×model heatmap, dataset comparison, CIs,
-  stats forest, and H5 (prefix/reuse/prefetch).
+  TTFT-vs-TPOT, grounding, λ-sweep, ablation, E2 ratio grid, §17 scorer ablation,
+  method×model heatmap, dataset comparison, CIs, stats forest, and H5 (prefix/reuse/prefetch).
 
 ### 1.4 Bugs found and fixed (v2)
 
@@ -139,12 +146,16 @@ are not significant after correction — reported honestly, with the Pareto fron
 
 - [ ] 32K context points (needs a longer-context model — Qwen2.5 caps at 32,768, so a ~32K target truncates).
 - [ ] Perception Compressor baseline (or state the compute barrier).
-- [ ] Energy / RAPL-style telemetry (not exposed on this macOS box) and achievement-bandwidth vs roofline.
+- [ ] Energy / RAPL-style telemetry (not exposed on this macOS box) and achieved-bandwidth vs roofline.
 - [ ] Citation-correctness grounding where gold citations exist.
 - [ ] LongBench multi-document QA, TriviaQA/NQ single-hop (E9 breadth).
-- [ ] Full §17 ablation grid (scorer on/off × cost on/off × coverage on/off × reorder on/off).
+- [ ] Dense / hybrid retrieval top-k end-to-end (only BM25 top-5 so far).
 - [ ] More queries (>30) to tighten the paired statistics.
 - [ ] Paper-ready "Preliminary Results" section from `results_v2/`.
+
+**Completed in the latest batch:**
+- [x] **E2** exact compression-ratio grid (0.2 / 0.4 / 0.5 / 0.6 / 0.8).
+- [x] **§17** scorer on/off ablation (cross-encoder vs BM25).
 
 ---
 
