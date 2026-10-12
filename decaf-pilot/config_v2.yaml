@@ -1,0 +1,73 @@
+seed: 42
+
+data:
+  hotpot:
+    tag: hotpot
+    hf_name: hotpotqa/hotpot_qa
+    hf_config: distractor
+    split: validation
+    n_questions: 30
+  twowiki:
+    tag: twowiki
+    hf_name: framolfese/2WikiMultihopQA
+    hf_config: null
+    split: validation
+    n_questions: 30
+  cache_dir: data_v2
+
+retriever: bm25
+top_k: 5
+
+# E5 (quantization) + E6 (model size): 3B{ Q4,Q8 } and 7B{ Q4 }
+models:
+  - name: qwen2.5:3b-instruct
+    label: "3B / Q4_K_M"
+    family: "3B"
+    quant: "Q4_K_M"
+  - name: qwen2.5:3b-instruct-q8_0
+    label: "3B / Q8_0"
+    family: "3B"
+    quant: "Q8_0"
+  - name: qwen2.5:7b-instruct-q4_K_M
+    label: "7B / Q4_K_M"
+    family: "7B"
+    quant: "Q4_K_M"
+
+# E1/E8: decode-scaling curve TPOT(L)
+scaling:
+  lengths: [256, 512, 1024, 2048, 4096, 8192]
+  replicates: 2
+  question: "Describe in detail how a bicycle works, listing its main parts and what each does."
+
+# H1: generation-length crossover sweep (find where decode vs prefill cross)
+crossover:
+  lengths: [512, 2048, 8192]
+  num_predict: [16, 64, 128]
+  replicates: 1
+  question: "Describe in detail how a bicycle works, listing its main parts and what each does."
+
+# E2/E3/E4/E7 + Sec.17 ablation: compression methods
+compression:
+  methods: [full, fixed_0.5, fixed_0.2, rel_iso, decaf_lam2, decaf_lam6, decaf_lam15, decaf_nocov_lam6, decaf_noreorder_lam6]
+  decaf_primary: decaf_lam6
+  lambda: 1.5
+  fixed_ratios: [0.5, 0.2]
+
+scorer:
+  cross_encoder: BAAI/bge-reranker-base
+  max_length: 512
+
+ollama:
+  host: http://localhost:11434
+  temperature: 0.0
+  num_predict: 32
+  num_ctx: 16384
+  timeout: 3600
+  logprobs: false
+
+paths:
+  scaling_cache: cache_v2/scaling.jsonl
+  crossover_cache: cache_v2/crossover.jsonl
+  compress_cache: cache_v2/compression.jsonl
+  ce_cache: cache_v2/ce_scores
+  results: results_v2
