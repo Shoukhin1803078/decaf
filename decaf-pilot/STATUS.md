@@ -149,6 +149,8 @@ are not significant after correction — reported honestly, with the Pareto fron
 
 ### 1.5 What's next / remaining
 
+> Full prioritized list (10 experiments remaining, 2 blocked) in [`remaining.md`](./remaining.md).
+
 - [ ] 32K context points (needs a longer-context model — Qwen2.5 caps at 32,768, so a ~32K target truncates).
 - [ ] Perception Compressor baseline (or state the compute barrier).
 - [ ] Energy / RAPL-style telemetry (not exposed on this macOS box) and achieved-bandwidth vs roofline.
