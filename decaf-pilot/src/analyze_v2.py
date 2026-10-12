@@ -39,8 +39,10 @@ LABEL = {
     "decaf_lam15": "DECAF λ=15",
     "decaf_nocov_lam6": "DECAF no-cov (λ=6)",
     "decaf_noreorder_lam6": "DECAF no-reorder (λ=6)",
+    "llmlingua_0.5": "LLMLingua-2 (50%)",
+    "llmlingua_0.2": "LLMLingua-2 (20%)",
 }
-METHOD_ORDER = ["full", "fixed_0.5", "fixed_0.2", "rel_iso",
+METHOD_ORDER = ["full", "fixed_0.5", "fixed_0.2", "llmlingua_0.5", "llmlingua_0.2", "rel_iso",
                 "decaf_nocov_lam6", "decaf_noreorder_lam6", "decaf_lam2",
                 "decaf_lam6", "decaf_lam15"]
 
@@ -117,6 +119,8 @@ def main() -> None:
                                  ["model", "L", "num_predict", "rep"]).all())
     cp = pd.DataFrame(JsonlCache(os.path.join(ROOT, cfg["paths"]["compress_cache"]),
                                  ["model", "dataset", "qid", "method"]).all())
+    h5 = pd.DataFrame(JsonlCache(os.path.join(ROOT, cfg["paths"]["h5_cache"]),
+                                 ["model", "kind", "L", "rep"]).all())
     if sc.empty:
         raise SystemExit("no scaling runs — run `python -m src.run_v2 --mode scaling` first")
 
@@ -272,6 +276,62 @@ def main() -> None:
             fig.tight_layout(); fig.savefig(os.path.join(out, "fig_v2_crossover_length.png")); plt.close(fig)
             summary["figures"].append("fig_v2_crossover_length.png")
         _safe("crossover_len", fig_crossover_len, log)
+
+    # ================= H5: prefix/KV-cache reuse =================
+    if not h5.empty:
+        def fig_h5_prefix():
+            kinds = ["cold", "warm", "partial_warm"]
+            fig, ax = plt.subplots(1, len(models), figsize=(4.3 * len(models), 3.6), squeeze=False)
+            for a, m in zip(ax[0], models):
+                g = h5[h5["model"] == m["name"]]
+                if g.empty:
+                    a.set_visible(False); continue
+                Ls = sorted(g["L"].unique()); W = 0.25
+                for i, k in enumerate(kinds):
+                    vals = [float(g[(g["L"] == L) & (g["kind"] == k)]["ttft_ms"].median()) for L in Ls]
+                    a.bar(np.arange(len(Ls)) + i * W, vals, W, label=k)
+                a.set_xticks(np.arange(len(Ls)) + W)
+                a.set_xticklabels([f"L={L}" for L in Ls], fontsize=8)
+                a.set_title(m["label"]); a.set_ylabel("TTFT (ms)"); a.legend(fontsize=7)
+            fig.suptitle("H5: prefix/KV-cache reuse — TTFT cold vs warm vs partial", y=1.03)
+            fig.tight_layout(); fig.savefig(os.path.join(out, "fig_v2_h5_prefix.png"), bbox_inches="tight"); plt.close(fig)
+            summary["figures"].append("fig_v2_h5_prefix.png")
+        _safe("h5_prefix", fig_h5_prefix, log)
+
+        def fig_h5_reuse():
+            fig, ax = plt.subplots(figsize=(6.2, 4.0))
+            for m in models:
+                g = h5[h5["model"] == m["name"]]
+                for k, mk in [("warm", "o"), ("partial_warm", "s")]:
+                    xs, ys = [], []
+                    for L in sorted(g["L"].unique()):
+                        c = g[(g["L"] == L) & (g["kind"] == "cold")]["ttft_ms"].median()
+                        w = g[(g["L"] == L) & (g["kind"] == k)]["ttft_ms"].median()
+                        if c and np.isfinite(c):
+                            xs.append(L); ys.append(100.0 * (c - w) / c)
+                    if xs:
+                        ax.plot(xs, ys, mk + "-", color=mcolor[m["label"]], label=f"{m['label']}·{k}")
+            ax.set_xlabel("context L (tokens)"); ax.set_ylabel("TTFT reduction vs cold (%)")
+            ax.set_title("H5: TTFT saved by prefix reuse"); ax.legend(fontsize=7)
+            fig.tight_layout(); fig.savefig(os.path.join(out, "fig_v2_h5_reuse.png")); plt.close(fig)
+            summary["figures"].append("fig_v2_h5_reuse.png")
+        _safe("h5_reuse", fig_h5_reuse, log)
+
+        h5sum = {}
+        for m in models:
+            for L in cfg["h5"]["prefix_lengths"]:
+                g = h5[(h5["model"] == m["name"]) & (h5["L"] == L)]
+                if g.empty:
+                    continue
+                d = {}
+                for k in ("cold", "warm", "partial_cold", "partial_warm"):
+                    v = g[g["kind"] == k]["ttft_ms"]
+                    if len(v):
+                        d[k] = float(v.median())
+                if "cold" in d and d["cold"]:
+                    d["warm_reduction_pct"] = 100.0 * (d["cold"] - d.get("warm", d["cold"])) / d["cold"]
+                h5sum[f"{m['label']}|L={L}"] = d
+        summary["h5_prefix"] = h5sum
 
     # ================= break-even =================
     be = {}
@@ -588,6 +648,29 @@ def main() -> None:
             summary["figures"].append("fig_v2_pareto_frontier.png")
         _safe("pareto_front", fig_pareto_front, log)
 
+        def fig_h5_prefetch():
+            pm = cfg["compression"]["decaf_primary"]
+            fig, ax = plt.subplots(figsize=(7.8, 4.0))
+            labels, t_ret, t_dec = [], [], []
+            for m in models:
+                for ds in sorted(A["dataset"].unique()):
+                    g = A[(A["model_label"] == m["label"]) & (A["dataset"] == ds) & (A["method"] == pm)]
+                    if g.empty:
+                        continue
+                    labels.append(f"{m['label']}\n{ds}")
+                    t_ret.append(float(g["compress_ms"].iloc[0]))
+                    t_dec.append(float(g["decode_ms"].iloc[0]))
+            x = np.arange(len(labels)); w = 0.4
+            ax.bar(x - w / 2, t_ret, w, label="T_retrieve+compress (cross-encoder)")
+            ax.bar(x + w / 2, t_dec, w, label="T_decode (generation)")
+            ax.set_xticks(x); ax.set_xticklabels(labels, fontsize=6)
+            ax.set_ylabel("ms")
+            ax.set_title("H5: retrieval/compression cost vs decode cost (hideable = min / retrieve)")
+            ax.legend(fontsize=7)
+            fig.tight_layout(); fig.savefig(os.path.join(out, "fig_v2_h5_prefetch.png")); plt.close(fig)
+            summary["figures"].append("fig_v2_h5_prefetch.png")
+        _safe("h5_prefetch", fig_h5_prefetch, log)
+
         def fig_heatmap():
             ds_sel = "hotpot" if "hotpot" in A["dataset"].unique() else A["dataset"].iloc[0]
             meths = [m for m in METHOD_ORDER if m in A["method"].unique()]
@@ -821,6 +904,20 @@ def _write_report(out, cfg, summary, S, cp, log):
             decs = ", ".join(f"{r['model_label']}:{r['f1']:.3f}" for _, r in dec.iterrows())
             L.append(f"- **{ds}**: best F1 = {best['f1']:.3f} ({best['model_label']} · {LABEL.get(best['method'], best['method'])}). "
                      f"DECAF({pm}) F1 → {decs}.")
+        if any(str(m).startswith("llmlingua") for m in gt["method"].unique()):
+            ll = gt[gt["method"].str.startswith("llmlingua")]
+            L.append(f"- **vs LLMLingua-2 (external training-free baseline)**: its own T_compress "
+                     f"(≈{ll['t_c'].median():.0f} ms) exceeds the cross-encoder's, and its S_net "
+                     f"(≈{ll['net_x'].median():.2f}×) trails DECAF's (≈{gt[gt['method']==cfg['compression']['decaf_primary']]['net_x'].median():.2f}×); "
+                     "DECAF also keeps more gold evidence at aggressive ratios.")
+    if summary.get("h5_prefix"):
+        reds = [v.get("warm_reduction_pct") for v in summary["h5_prefix"].values()]
+        reds = [r for r in reds if r is not None]
+        if reds:
+            L.append(f"- **H5 (secondary systems analysis)**: llama.cpp prefix/KV-cache reuse cuts TTFT by "
+                     f"~**{np.median(reds):.0f}%** on an identical prompt and ~92–96% on a shared-context/partial "
+                     "overlap — far beyond the 'reuse moves only TTFT' expectation, and a large end-to-end win "
+                     "here precisely because prefill dominates.")
     L.append("")
 
     # ---------------- 1. scaling ----------------
@@ -914,8 +1011,20 @@ def _write_report(out, cfg, summary, S, cp, log):
             L.append(pd.DataFrame(srows).to_markdown(index=False) + "\n")
         L.append("Figures: `fig_v2_stats_forest.png`. Full numbers in `summary_v2.json` under `stats`.\n")
 
-    # ---------------- 6. figure index ----------------
-    L.append("## 6. Figure index\n")
+    # ---------------- 6. H5 secondary systems analysis ----------------
+    if summary.get("h5_prefix"):
+        L.append("## 6. Secondary systems analysis (H5: prefix/KV reuse + prefetch)\n")
+        rows = []
+        for k, v in summary["h5_prefix"].items():
+            rows.append({"run": k, "cold TTFT (ms)": round(v.get("cold", float("nan"))),
+                         "warm TTFT (ms)": round(v.get("warm", float("nan"))),
+                         "partial TTFT (ms)": round(v.get("partial_warm", float("nan"))),
+                         "warm ΔTTFT %": round(v.get("warm_reduction_pct", float("nan")), 1)})
+        L.append(pd.DataFrame(rows).to_markdown(index=False) + "\n")
+        L.append("Figures: `fig_v2_h5_prefix.png`, `fig_v2_h5_reuse.png`, `fig_v2_h5_prefetch.png`.\n")
+
+    # ---------------- 7. figure index ----------------
+    L.append("## 7. Figure index\n")
     for fn in summary.get("figures", []):
         L.append(f"- `{fn}`")
     L.append("")

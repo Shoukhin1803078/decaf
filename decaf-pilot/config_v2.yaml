@@ -35,7 +35,7 @@ models:
 
 # E1/E8: decode-scaling curve TPOT(L)
 scaling:
-  lengths: [256, 512, 1024, 2048, 4096, 8192]
+  lengths: [256, 512, 1024, 2048, 4096, 8192, 16384]
   replicates: 2
   question: "Describe in detail how a bicycle works, listing its main parts and what each does."
 
@@ -48,10 +48,15 @@ crossover:
 
 # E2/E3/E4/E7 + Sec.17 ablation: compression methods
 compression:
-  methods: [full, fixed_0.5, fixed_0.2, rel_iso, decaf_lam2, decaf_lam6, decaf_lam15, decaf_nocov_lam6, decaf_noreorder_lam6]
+  methods: [full, fixed_0.5, fixed_0.2, rel_iso, decaf_lam2, decaf_lam6, decaf_lam15, decaf_nocov_lam6, decaf_noreorder_lam6, llmlingua_0.5, llmlingua_0.2]
   decaf_primary: decaf_lam6
   lambda: 1.5
   fixed_ratios: [0.5, 0.2]
+
+# H5 secondary analysis: llama.cpp prefix/KV cache reuse
+h5:
+  prefix_lengths: [2048, 8192]
+  replicates: 2
 
 scorer:
   cross_encoder: BAAI/bge-reranker-base
@@ -61,7 +66,7 @@ ollama:
   host: http://localhost:11434
   temperature: 0.0
   num_predict: 32
-  num_ctx: 16384
+  num_ctx: 20480
   timeout: 3600
   logprobs: false
 
@@ -70,4 +75,5 @@ paths:
   crossover_cache: cache_v2/crossover.jsonl
   compress_cache: cache_v2/compression.jsonl
   ce_cache: cache_v2/ce_scores
+  h5_cache: cache_v2/h5_prefix.jsonl
   results: results_v2

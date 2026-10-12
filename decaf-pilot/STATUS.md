@@ -1,16 +1,177 @@
-# DECAF Pilot — Status & Progress
+# DECAF — Status & Progress
 
-**Date:** 2026-10-07
-**Scope:** Phase 0 — smoke test / preliminary-results pilot for the DECAF proposal
+**Date:** 2026-10-12
+**Scope:** Phase 1 (v2) — **full experiments** for the DECAF proposal
 (*"When Does Context Compression Accelerate CPU RAG? A Decode-Centric Study"*).
-**State:** ✅ Complete and runnable end-to-end. Decode-scaling, break-even and
-compression results produced.
+**State:** ✅ Complete, reproducible end-to-end. 2,097 runs across 3 models × 2 datasets;
+37 figures + report in `results_v2/`. The Phase-0 pilot is preserved (§7) and superseded.
 
-Location: `experiments/decaf-pilot/`
+Location: `decaf-pilot/`
 
 ---
 
-## 1. Summary
+## 0. Current status at a glance
+
+| | Phase 0 (pilot) | Phase 1 (v2, **current**) |
+|---|---|---|
+| Models | 3B Q4_K_M | 3B Q4 · 3B Q8 · 7B Q4 |
+| Datasets | HotpotQA | HotpotQA + 2WikiMultihopQA |
+| Scorer | BM25 (~1.4 ms) | cross-encoder `bge-reranker-base` (~960 ms) |
+| Baselines | fixed ratio, relevance | + **LLMLingua-2** |
+| Long context | — | up to **16K** tokens |
+| Generation sweep | — | N_out ∈ {16, 64, 128} (crossover) |
+| Secondary (H5) | — | prefix/KV reuse + prefetch |
+| Statistics | — | bootstrap CI · McNemar · Holm |
+| Runs | 220 | **2,097** |
+| Deliverables | `results/` | `results_v2/` (37 figures, `FULL_RESULTS_v2.md`) |
+
+---
+
+## 1. Phase 1 (v2) — full experiments
+
+### 1.1 What was done
+
+Matrix: **3 models × 2 datasets × 11 methods**, plus scaling, crossover and an H5 micro-study.
+All runs are cached (resumable, append-only JSONL); nothing from Phase 0 was modified.
+
+| Family | Runs | Description |
+|---|---:|---|
+| Scaling (E1/E8) | 42 | TPOT(L)/prefill(L) at L ∈ {256 … 16384}, 2 reps × 3 models |
+| Crossover (H1) | 27 | decode share vs N_out ∈ {16,64,128} at L ∈ {512,2048,8192} × 3 models |
+| Compression (E2–E7, E9) | 1,980 | 3 models × 2 datasets × 30 q × 11 methods |
+| H5 secondary | 48 | cold/warm/partial TTFT prefix-cache study × 3 models × 2 lengths |
+| **Total** | **2,097** | |
+
+**New code (all additive, `*_v2`):**
+
+| File | Purpose |
+|---|---|
+| `config_v2.yaml` | v2 config (models, datasets, methods, H5, paths) |
+| `src/data_v2.py` | unified HotpotQA + 2WikiMultihopQA loaders (schema-agnostic) |
+| `src/scorer_v2.py` | cross-encoder relevance scorer (`bge-reranker-base`), times T_compress |
+| `src/select_v2.py` | DECAF CPU-aware gate + baselines on cross-encoder relevance |
+| `src/run_v2.py` | Phase A driver (scaling / crossover / compression), memory sampling, resumable |
+| `src/llmlingua_v2.py` | LLMLingua-2 external baseline wrapper |
+| `src/h5_v2.py` | H5 prefix/KV-cache + prefetch micro-study |
+| `src/analyze_v2.py` | Phase B: 37 figures, stats, `FULL_RESULTS_v2.md`, `summary_v2.json` |
+| `scripts/run_v2.sh` | end-to-end v2 runner |
+
+### 1.2 Key results
+
+**E1/E8 — decode scaling (per model, now to 16K).** Including the 16K point exposes mild
+prefill super-linearity; prefill, not decode, dominates for realistic contexts.
+
+| model | prefill (ms/tok) | prefill r² | TPOT slope (ms/1k) | decode=prefill at L |
+|---|---:|---:|---:|---:|
+| 3B / Q4_K_M | 5.51 | 0.990 | +0.85 | ~867 |
+| 3B / Q8_0 | 5.28 | 0.994 | +0.81 | ~916 |
+| 7B / Q4_K_M | 10.92 | 0.998 | +1.30 | ~584 |
+
+**E4 — break-even L\* (real cross-encoder overhead).** With T_compress ≈ **962 ms**, L\* is no
+longer trivial: compression is a net latency loss below it, a net win above.
+
+| model | L_c (retained tok) | T_compress (ms) | **L\*** (tok) |
+|---|---:|---:|---:|
+| 3B / Q4_K_M | 154 | 962 | **327** |
+| 3B / Q8_0 | 154 | 962 | **335** |
+| 7B / Q4_K_M | 154 | 962 | **241** |
+
+**E2/E3/E5/E6/E7 — quality, latency, overhead, grounding.** Example (HotpotQA, DECAF λ=6):
+
+| model | F1 | retained | gold-in-ev | gross speedup | **S_net** (incl. T_compress) |
+|---|---:|---:|---:|---:|---:|
+| 3B / Q4_K_M | 0.291 | 0.128 | 0.633 | 3.66× | **1.89×** |
+| 3B / Q8_0 | 0.330 | 0.128 | 0.633 | 2.75× | 1.69× |
+| 7B / Q4_K_M | 0.522 | 0.128 | 0.633 | 9.81× | **4.50×** |
+
+- **Overhead matters:** the ~960 ms cross-encoder cuts gross speedup roughly in half — the pilot's
+  "always a net win" conclusion was an artifact of the ~1.4 ms BM25 scorer.
+- **Model-size/quant interaction (E5/E6):** compression *helps* the 3B (distractor harm) but *hurts*
+  the 7B on HotpotQA (full-context F1 0.595 → DECAF 0.522); grounding falls monotonically with
+  retained evidence (0.833 full → 0.633).
+- **E9 generalization:** 2Wiki is harder (best F1 0.336); same qualitative ordering.
+
+**Baseline — LLMLingua-2.** Its own compressor cost (~1.0–2.5 s) exceeds the cross-encoder's, so its
+S_net (≈1.0–1.8×) trails DECAF's (≈1.5–4.5×), and DECAF keeps more gold evidence at aggressive ratios.
+
+**§17 ablation + λ.** Coverage-off slightly raises evidence recall (+0.03); reorder-off ≈ neutral;
+λ sweep trades retained/grounding for F1 as expected.
+
+**H5 (secondary systems analysis).** llama.cpp prefix/KV-cache reuse cuts TTFT by **~99%** on an
+identical prompt and ~92–96% on a shared-context/partial overlap — a *large* end-to-end win here
+precisely because prefill dominates (contra the "reuse moves only TTFT" expectation).
+
+**Statistics.** Paired bootstrap CIs, McNemar (EM) and Holm correction (n=30). Most method deltas
+are not significant after correction — reported honestly, with the Pareto frontier as the story.
+
+### 1.3 Deliverables (`results_v2/`)
+
+- `FULL_RESULTS_v2.md` — 8 sections (0 headline · 1 scaling · 2 break-even · 3 compression ·
+  4 λ/ablation · 5 statistics · 6 H5 · 7 figure index).
+- `summary_v2.json` — all fitted curves, per-method stats, break-even, H5, paired tests.
+- **37 figures**: scaling (TPOT/prefill/TTFT/E2E/decode-share/RSS/panel), crossover,
+  break-even curves + L* bar + overhead-vs-savings, Pareto (F1×E2E, ×TTFT, ×retained, frontier),
+  TTFT-vs-TPOT, grounding, λ-sweep, ablation, method×model heatmap, dataset comparison, CIs,
+  stats forest, and H5 (prefix/reuse/prefetch).
+
+### 1.4 Bugs found and fixed (v2)
+
+1. **Broken venv shebang.** `.venv/bin/pip` pointed at a stale venv path (created under
+   `experiments/decaf-pilot/`), so `pip install` wrote to the wrong site-packages. Fixed by using
+   `.venv/bin/python -m pip`; consider recreating the venv.
+2. **Break-even intercept/slope swap.** The prefill fit was unpacked `(slope, intercept)` while
+   stored `(intercept, slope)` → `L* = inf`. Fixed → meaningful L\* (327/335/241).
+3. **Crossover figures filtered by label, not name.** Both crossover figures came out empty (one
+   collapsed to 45 px). Fixed.
+4. **S_net ignored compressor cost.** E2E is generation-only, so gross speedup overstated the win;
+   added proper `S_net = T_full / (T_compress + T_e2e)` (and don't charge the compressor to `full`).
+5. **Dataset API.** `datasets` 5.1.0 removed `trust_remote_code`; script-based 2Wiki repos fail.
+   Switched to parquet `framolfese/2WikiMultihopQA`.
+
+### 1.5 What's next / remaining
+
+- [ ] 32K context points (needs a longer-context model — Qwen2.5 caps at 32,768, so a ~32K target truncates).
+- [ ] Perception Compressor baseline (or state the compute barrier).
+- [ ] Energy / RAPL-style telemetry (not exposed on this macOS box) and achievement-bandwidth vs roofline.
+- [ ] Citation-correctness grounding where gold citations exist.
+- [ ] LongBench multi-document QA, TriviaQA/NQ single-hop (E9 breadth).
+- [ ] Full §17 ablation grid (scorer on/off × cost on/off × coverage on/off × reorder on/off).
+- [ ] More queries (>30) to tighten the paired statistics.
+- [ ] Paper-ready "Preliminary Results" section from `results_v2/`.
+
+---
+
+## 2. How to run (v2)
+
+```bash
+cd decaf-pilot
+python3 -m venv .venv && .venv/bin/python -m pip install -r requirements.txt   # once
+.venv/bin/python -m pip install "sentence-transformers>=3.0" llmlingua psutil  # v2 extras
+ollama pull qwen2.5:3b-instruct-q8_0 && ollama pull qwen2.5:7b-instruct-q4_K_M  # once
+
+.venv/bin/python -m src.run_v2 --config config_v2.yaml --mode all   # Phase A (resumable)
+.venv/bin/python -m src.h5_v2 --config config_v2.yaml               # H5 micro-study
+.venv/bin/python -m src.analyze_v2 --config config_v2.yaml          # Phase B
+bash scripts/run_v2.sh                                              # full v2 end-to-end
+```
+
+Outputs in `results_v2/`: `FULL_RESULTS_v2.md`, 37 figures, `summary_v2.json`.
+
+---
+
+## 3. Phase 0 (pilot) — historical, superseded by §1
+
+> Preserved verbatim. The v2 results above supersede these single-model numbers; the *shapes*
+> (prefill-dominated, grounding cost) hold, but the "compression is always a net win" conclusion
+> was an artifact of the ~1.4 ms BM25 scorer and does not survive the real cross-encoder.
+
+**Date:** 2026-10-07
+**Scope:** Phase 0 — smoke test / preliminary-results pilot.
+**State:** ✅ Complete and runnable end-to-end.
+
+Location: `experiments/decaf-pilot/` (historical path)
+
+### 3.1 Summary
 
 DECAF's thesis is that compression's benefit on CPU must be **measured, not assumed**: the
 compressor costs time, decode cost depends on context length, and the question is whether
@@ -27,32 +188,28 @@ Compression is nevertheless a clear net latency win (≈4×) above a trivial thr
 is in **prefill/TTFT, not decode**, and it costs grounding. The CPU-aware selector does not beat a
 plain fixed-ratio ranking on quality.
 
----
+### 3.2 What was done
 
-## 2. What has been done
-
-### Codebase (new, under `experiments/decaf-pilot/`)
+#### Codebase (under `experiments/decaf-pilot/`)
 
 | File | Purpose |
 |---|---|
 | `src/contexts.py` | sentence segmentation, token estimation, filler corpus for controlled length |
 | `src/select.py` | BM25 relevance, coverage-aware DECAF selector, baselines, `T_compress` |
-| `src/run_experiments.py` | **Phase A** — scaling sweep (with warmup + prefix-cache nonce) and compression methods; resumable |
+| `src/run_experiments.py` | **Phase A** — scaling sweep (warmup + prefix-cache nonce) and compression; resumable |
 | `src/analyze.py` | **Phase B** — `TPOT(L)`/`prefill(L)` fits, `L*`, net speedup, Pareto, grounding, ablation |
 | `src/llm.py` | streaming Ollama client (TTFT) with explicit `num_ctx` |
-| `src/data.py`, `src/retriever.py`, `src/metrics.py` | HotpotQA loader (with gold supporting facts), BM25, EM/F1 |
+| `src/data.py`, `src/retriever.py`, `src/metrics.py` | HotpotQA loader (gold supporting facts), BM25, EM/F1 |
 
-### Runs completed
+#### Runs completed
 
-220 runs (10 scaling + 210 compression), ~6 min CPU. Two measurement bugs found and fixed (§4).
+220 runs (10 scaling + 210 compression), ~6 min CPU. Two measurement bugs found and fixed.
 
----
-
-## 3. Results
+### 3.3 Results
 
 Outputs in `experiments/decaf-pilot/results/`.
 
-### 3.1 Decode scaling (RQ1 / E1, E8) — `fig_scaling.png`
+#### 3.3.1 Decode scaling (RQ1 / E1, E8) — `fig_scaling.png`
 
 | L (tokens) | prefill ms | TPOT ms/tok | decode share |
 |---|---|---|---|
@@ -66,12 +223,12 @@ Outputs in `experiments/decaf-pilot/results/`.
 - **Decode/prefill crossover L ≈ 414 tokens** (32-token outputs); **prefill dominates above it.**
 - **H1 refuted**: the decode share *falls* with L, and compression's gain is in TTFT, not TPOT.
 
-### 3.2 Break-even L* (RQ2 / E3, E4) — `fig_break_even.png`
+#### 3.3.2 Break-even L* (RQ2 / E3, E4) — `fig_break_even.png`
 - `T_compress = 1.36 ms`, retained `L_c ≈ 205 tokens` → **`L* ≈ 205 tokens`**.
 - **H2 supported but trivial on CPU**: because overhead ≪ per-token prefill cost, compression is a
   net latency win for *any* context above the retained budget.
 
-### 3.3 Compression: quality, grounding, latency (RQ3 / E2, E7) — `fig_pareto_grounding.png`
+#### 3.3.3 Compression: quality, grounding, latency (RQ3 / E2, E7) — `fig_pareto_grounding.png`
 
 | method | F1 | ev. recall | gold-in-ev | retained | T_compress ms | E2E ms | net speedup |
 |---|---|---|---|---|---|---|---|
@@ -88,14 +245,12 @@ Outputs in `experiments/decaf-pilot/results/`.
 - **Grounding degrades monotonically** with retained evidence (0.833 → 0.60 → 0.20) — accuracy alone
   hides this.
 
-### 3.4 Component analysis (§17) — `fig_ablation.png`
+#### 3.3.4 Component analysis (§17) — `fig_ablation.png`
 - Iso-budget relevance vs DECAF(λ6): F1 0.240 → 0.268, gold-in-evidence 0.567 → 0.600 (small gain),
   evidence recall 0.573 → 0.532 (small loss).
 - **H3 not supported**: DECAF does not beat fixed-ratio selection (fixed-50% 0.285; fixed-20% 0.265).
 
----
-
-## 4. Bugs found and honest interpretation
+### 3.4 Bugs found and honest interpretation
 
 Two measurement bugs were caught and fixed — both matter for a latency study:
 
@@ -113,39 +268,24 @@ negligible vs prefill cost), and the real decision is how much grounding you are
 DECAF's CPU-aware term does not beat plain relevance ranking here.
 
 **Limits:** one model/quantization, 30 questions, 32-token generations, BM25-based scorer (not the
-proposal's cross-encoder), Reddit-free synthetic filler for the scaling sweep.
+proposal's cross-encoder), synthetic filler for the scaling sweep.
 
----
+### 3.5 Phase-0 remaining list (now addressed or re-scoped in §1.5)
 
-## 5. What's next / remaining
+- [x] Q4_K_M vs Q8_0 and 3B vs 7B pairs → done in v2 (E5/E6).
+- [x] Generation-length sweep (N_out ∈ {16,64,128}) → done in v2 (crossover).
+- [x] Cross-encoder scorer (`bge-reranker-base`) → done in v2.
+- [x] Break-even by quantization/model table → done in v2 (§1.2).
+- [x] Long-context points (8K, 16K) → done in v2 (16K).
+- [x] 2WikiMultihopQA generalization → done in v2 (E9).
+- [x] LLMLingua-2 baseline → done in v2.
+- [x] §17 ablation (coverage/reorder/λ) → done in v2.
+- [x] H5 prefix/KV reuse + prefetch → done in v2.
+- [x] Bootstrap CIs / McNemar / Holm → done in v2.
+- [ ] 32K points · Perception Compressor · energy/bandwidth telemetry · citation correctness ·
+  LongBench/TriviaQA · larger n · paper-ready write-up — see §1.5.
 
-### 5.1 Immediate (strengthen the pilot)
-- [ ] Add the **Q4_K_M vs Q8_0** and **3B vs 7B** pairs (H4, E5, E6) — one `ollama pull` each.
-- [ ] Sweep **generation length** N_out (16/64/128) to locate the decode/prefill crossover properly (H1).
-- [ ] Replace BM25 scoring with the proposal's **cross-encoder** (`bge-reranker-base`) and re-measure `T_compress`.
-- [ ] Add a **break-even by quantization/model** table (a stated contribution).
-
-### 5.2 Core experiments (E1–E9)
-- [ ] E1 long-context points (8K, 16K) on a small query subset.
-- [ ] E2/E3 full compression-ratio sweep with `O_c`, `S_net` curves.
-- [ ] E7 grounding with citation correctness where gold citations exist.
-- [ ] E8 achieved-bandwidth / CPU-utilization telemetry against the roofline model.
-- [ ] E9 generalization: 2WikiMultihopQA, TriviaQA/NQ, LongBench subset.
-
-### 5.3 Baselines & ablations
-- [ ] LLMLingua-2 and Perception Compressor as external CPU baselines (or state the compute barrier).
-- [ ] Full §17 ablation: scorer on/off, CPU-cost on/off, coverage on/off, reordering on/off, λ sweep.
-
-### 5.4 Secondary systems analysis (H5)
-- [ ] llama.cpp prefix/KV cache on repeated queries; async retrieval prefetch overlapped with decode.
-
-### 5.5 Statistics & deliverables
-- [ ] Paired bootstrap CIs and McNemar tests per the proposal's §21; Holm correction.
-- [ ] Release configs, seeds, telemetry logs; paper-ready "Preliminary Results" section.
-
----
-
-## 6. How to run
+### 3.6 How to run (Phase 0)
 
 ```bash
 cd experiments/decaf-pilot

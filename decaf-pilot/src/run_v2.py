@@ -194,7 +194,8 @@ def _ce_scores(scorer: CrossEncoderScorer, cfg: dict, dataset: str, ex, sentence
 
 
 def run_compression(cfg: dict, client: OllamaClient, model: dict,
-                    dataset_tag: str, dataset_spec: dict, scorer: CrossEncoderScorer) -> int:
+                    dataset_tag: str, dataset_spec: dict, scorer: CrossEncoderScorer,
+                    compressor=None) -> int:
     cache = JsonlCache(os.path.join(ROOT, cfg["paths"]["compress_cache"]),
                        ["model", "dataset", "qid", "method"])
     examples = load_examples_v2(dataset_spec, cfg["seed"], cfg["data"]["cache_dir"])[
@@ -219,19 +220,36 @@ def run_compression(cfg: dict, client: OllamaClient, model: dict,
         n_iso = len(decaf_idx)
         gold = _gold_sentences(ex)
 
+        full_ctx = None
         for method in methods:
             if cache.has(model=model["name"], dataset=dataset_tag, qid=ex.qid, method=method):
                 continue
-            idx, stats = select_v2(sentences, ex.question, rel, method, lam=lam, n_iso=n_iso)
-            ctx = build_context(sentences, idx, titles)
+            if method.startswith("llmlingua"):
+                rate = float(method.split("_", 1)[1])
+                if full_ctx is None:
+                    full_ctx = build_context(sentences, list(range(len(sentences))), titles)
+                ctx, ll_ms, orig_tok, comp_tok = compressor.compress(full_ctx, rate)
+                stats = {
+                    "n_total": len(sentences), "n_selected": -1,
+                    "tokens_total": float(orig_tok or 0), "tokens_selected": float(comp_tok or 0),
+                    "retained_ratio": (comp_tok / orig_tok) if orig_tok else float("nan"),
+                    "select_ms": ll_ms,
+                }
+                ce_eff = 0.0
+                evidence_recall = float("nan")
+                evidence_precision = float("nan")
+            else:
+                idx, stats = select_v2(sentences, ex.question, rel, method, lam=lam, n_iso=n_iso)
+                ctx = build_context(sentences, idx, titles)
+                ce_eff = ce_ms
+                retained = {sentences[i].strip() for i in idx}
+                inter = len(retained & gold)
+                evidence_recall = inter / len(gold) if gold else float("nan")
+                evidence_precision = inter / len(retained) if retained else float("nan")
             prompt = build_prompt(ex.question, [ctx], ["evidence"])
             resp = _generate(client, prompt)
             scored = score_answer(resp["response"], ex.answer)
 
-            retained = {sentences[i].strip() for i in idx}
-            inter = len(retained & gold)
-            evidence_recall = inter / len(gold) if gold else float("nan")
-            evidence_precision = inter / len(retained) if retained else float("nan")
             ctx_norm = _NORM.sub(" ", ctx.lower())
             pred_norm = _NORM.sub(" ", scored["pred"].lower()).strip()
             gold_norm = _NORM.sub(" ", ex.answer.lower()).strip()
@@ -247,8 +265,8 @@ def run_compression(cfg: dict, client: OllamaClient, model: dict,
                 "em": scored["em"], "f1": scored["f1"],
                 "evidence_recall": evidence_recall, "evidence_precision": evidence_precision,
                 "answer_support": answer_support, "gold_in_evidence": gold_in_evidence,
-                "ce_ms": ce_ms, **stats,
-                "compress_ms": ce_ms + stats["select_ms"],
+                "ce_ms": ce_eff, **stats,
+                "compress_ms": ce_eff + stats["select_ms"],
                 "peak_rss_mb": resp["peak_rss_mb"], **_timing(resp),
                 "raw_response": resp["response"],
             })
@@ -289,8 +307,12 @@ def main() -> None:
         sys.exit(f"Ollama not reachable at {cfg['ollama']['host']}.")
 
     scorer = None
+    compressor = None
     if args.mode in ("all", "compression"):
         scorer = CrossEncoderScorer(cfg["scorer"]["cross_encoder"], cfg["scorer"]["max_length"])
+        if any(m.startswith("llmlingua") for m in cfg["compression"]["methods"]):
+            from .llmlingua_v2 import LLMLinguaCompressor
+            compressor = LLMLinguaCompressor()
 
     n = 0
     for model in models:
@@ -302,7 +324,7 @@ def main() -> None:
             n += run_crossover(cfg, client, model)
         if args.mode in ("all", "compression"):
             for tag in tags:
-                n += run_compression(cfg, client, model, tag, cfg["data"][tag], scorer)
+                n += run_compression(cfg, client, model, tag, cfg["data"][tag], scorer, compressor)
     print(f"Done. {n} new runs cached.")
 
 
