@@ -126,6 +126,8 @@ def main() -> None:
                                  ["model", "dataset", "qid", "method"]).all())
     h5 = pd.DataFrame(JsonlCache(os.path.join(ROOT, cfg["paths"]["h5_cache"]),
                                  ["model", "kind", "L", "rep"]).all())
+    rt = pd.DataFrame(JsonlCache(os.path.join(ROOT, cfg["paths"]["retrieval_cache"]),
+                                 ["model", "dataset", "retriever", "qid", "method"]).all())
     if sc.empty:
         raise SystemExit("no scaling runs — run `python -m src.run_v2 --mode scaling` first")
 
@@ -337,6 +339,73 @@ def main() -> None:
                     d["warm_reduction_pct"] = 100.0 * (d["cold"] - d.get("warm", d["cold"])) / d["cold"]
                 h5sum[f"{m['label']}|L={L}"] = d
         summary["h5_prefix"] = h5sum
+
+    # ================= Sec.13 retrieval modes =================
+    if not rt.empty:
+        rmodels = [m for m in models if m["name"] in set(rt["model"])]
+        pm_r = cfg["compression"]["decaf_primary"]
+        retrievers = ["bm25", "dense", "hybrid"]
+
+        def _retr_sub(m, rtv, ds, method):
+            if rtv == "bm25":
+                return cp[(cp["model"] == m["name"]) & (cp["dataset"] == ds) & (cp["method"] == method)]
+            return rt[(rt["model"] == m["name"]) & (rt["dataset"] == ds)
+                      & (rt["retriever"] == rtv) & (rt["method"] == method)]
+
+        def fig_retrieval():
+            ds_sel = "hotpot" if "hotpot" in rt["dataset"].unique() else rt["dataset"].iloc[0]
+            fig, axes = plt.subplots(1, 3, figsize=(13, 3.9))
+            x = np.arange(len(rmodels)); w = 0.26
+            for j, (col, ttl) in enumerate([("f1", "F1"), ("gold_in_evidence", "gold-in-evidence"),
+                                            ("e2e_ms", "E2E (ms)")]):
+                for k, rtv in enumerate(retrievers):
+                    vals = []
+                    for m in rmodels:
+                        sub = _retr_sub(m, rtv, ds_sel, pm_r)
+                        vals.append(float(sub[col].mean()) if not sub.empty else np.nan)
+                    axes[j].bar(x + (k - 1) * w, vals, w, label=rtv)
+                axes[j].set_xticks(x)
+                axes[j].set_xticklabels([m["label"] for m in rmodels], fontsize=6, rotation=15)
+                axes[j].set_title(ttl)
+            axes[0].legend(fontsize=7)
+            fig.suptitle(f"Sec.13 retrieval modes (DECAF λ6, {ds_sel})", y=1.04)
+            fig.tight_layout(); fig.savefig(os.path.join(out, "fig_v2_retrieval.png"), bbox_inches="tight"); plt.close(fig)
+            summary["figures"].append("fig_v2_retrieval.png")
+        _safe("retrieval", fig_retrieval, log)
+
+        def fig_retrieval_pareto():
+            fig, ax = plt.subplots(figsize=(6.4, 4.2))
+            cmap = {"bm25": "tab:blue", "dense": "tab:orange", "hybrid": "tab:green"}
+            for m in rmodels:
+                for rtv in retrievers:
+                    for ds, mk in [("hotpot", "o"), ("twowiki", "s")]:
+                        sub = _retr_sub(m, rtv, ds, pm_r)
+                        if sub.empty:
+                            continue
+                        ax.scatter(sub["e2e_ms"].mean(), sub["f1"].mean(), s=55, marker=mk,
+                                   color=cmap[rtv], alpha=0.85)
+            for rtv in retrievers:
+                ax.scatter([], [], color=cmap[rtv], label=rtv, s=40)
+            ax.scatter([], [], color="k", marker="o", label="HotpotQA", s=40)
+            ax.scatter([], [], color="k", marker="s", label="2Wiki", s=40)
+            ax.set_xlabel("E2E (ms)"); ax.set_ylabel("F1")
+            ax.set_title(f"Retrieval mode — quality vs latency ({pm_r})")
+            ax.legend(fontsize=7, ncol=2)
+            fig.tight_layout(); fig.savefig(os.path.join(out, "fig_v2_retrieval_pareto.png")); plt.close(fig)
+            summary["figures"].append("fig_v2_retrieval_pareto.png")
+        _safe("retrieval_pareto", fig_retrieval_pareto, log)
+
+        rt_summary = {}
+        for m in rmodels:
+            for ds in sorted(rt["dataset"].unique()):
+                for rtv in retrievers:
+                    sub = _retr_sub(m, rtv, ds, pm_r)
+                    if sub.empty:
+                        continue
+                    rt_summary[f"{m['label']}|{ds}|{rtv}"] = {
+                        "f1": float(sub["f1"].mean()), "gold_in_evidence": float(sub["gold_in_evidence"].mean()),
+                        "retained_ratio": float(sub["retained_ratio"].mean()), "e2e_ms": float(sub["e2e_ms"].median())}
+        summary["retrieval"] = rt_summary
 
     # ================= break-even =================
     be = {}
@@ -1104,8 +1173,18 @@ def _write_report(out, cfg, summary, S, cp, log):
         L.append(pd.DataFrame(rows).to_markdown(index=False) + "\n")
         L.append("Figures: `fig_v2_h5_prefix.png`, `fig_v2_h5_reuse.png`, `fig_v2_h5_prefetch.png`.\n")
 
-    # ---------------- 7. figure index ----------------
-    L.append("## 7. Figure index\n")
+    # ---------------- 7. retrieval modes ----------------
+    if summary.get("retrieval"):
+        L.append("## 7. Retrieval modes (Sec.13: BM25 vs dense vs hybrid)\n")
+        rows = []
+        for k, v in summary["retrieval"].items():
+            rows.append({"run": k, "F1": round(v["f1"], 3), "gold-in-ev": round(v["gold_in_evidence"], 3),
+                         "retained": round(v["retained_ratio"], 3), "E2E(ms)": round(v["e2e_ms"], 0)})
+        L.append(pd.DataFrame(rows).to_markdown(index=False) + "\n")
+        L.append("Figures: `fig_v2_retrieval.png`, `fig_v2_retrieval_pareto.png`.\n")
+
+    # ---------------- 8. figure index ----------------
+    L.append("## 8. Figure index\n")
     for fn in summary.get("figures", []):
         L.append(f"- `{fn}`")
     L.append("")

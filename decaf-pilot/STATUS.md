@@ -3,8 +3,8 @@
 **Date:** 2026-10-12
 **Scope:** Phase 1 (v2) — **full experiments** for the DECAF proposal
 (*"When Does Context Compression Accelerate CPU RAG? A Decode-Centric Study"*).
-**State:** ✅ Complete, reproducible end-to-end. 3,756 runs across 4 model×quant configs
-(3B/7B × Q4_K_M/Q8_0) × 2 datasets; 39 figures + report in `results_v2/`.
+**State:** ✅ Complete, reproducible end-to-end. 4,476 runs across 4 model×quant configs
+(3B/7B × Q4_K_M/Q8_0) × 2 datasets; 41 figures + report in `results_v2/`.
 The Phase-0 pilot is preserved (§3) and superseded.
 
 Location: `decaf-pilot/`
@@ -23,8 +23,8 @@ Location: `decaf-pilot/`
 | Generation sweep | — | N_out ∈ {16, 64, 128} (crossover) |
 | Secondary (H5) | — | prefix/KV reuse + prefetch |
 | Statistics | — | bootstrap CI · McNemar · Holm |
-| Runs | 220 | **3,756** |
-| Deliverables | `results/` | `results_v2/` (39 figures, `FULL_RESULTS_v2.md`) |
+| Runs | 220 | **4,476** |
+| Deliverables | `results/` | `results_v2/` (41 figures, `FULL_RESULTS_v2.md`) |
 
 ---
 
@@ -32,16 +32,17 @@ Location: `decaf-pilot/`
 
 ### 1.1 What was done
 
-Matrix: **4 model×quant configs × 2 datasets × 15 methods**, plus scaling, crossover and an
-H5 micro-study. All runs are cached (resumable, append-only JSONL); nothing from Phase 0 was modified.
+Matrix: **4 model×quant configs × 2 datasets × 15 methods**, plus scaling, crossover, a retrieval-mode
+study and an H5 micro-study. All runs are cached (resumable, append-only JSONL); nothing from Phase 0 was modified.
 
 | Family | Runs | Description |
 |---|---:|---|
 | Scaling (E1/E8) | 56 | TPOT(L)/prefill(L) at L ∈ {256 … 16384}, 2 reps × 4 configs |
 | Crossover (H1) | 36 | decode share vs N_out ∈ {16,64,128} at L ∈ {512,2048,8192} × 4 configs |
 | Compression (E2–E7, E9) | 3,600 | 4 configs × 2 datasets × 30 q × 15 methods |
+| Retrieval modes (§13) | 720 | BM25 vs dense vs hybrid, 2 models × 2 datasets × 3 methods |
 | H5 secondary | 64 | cold/warm/partial TTFT prefix-cache study × 4 configs × 2 lengths |
-| **Total** | **3,756** | 3B/7B × Q4_K_M/Q8_0 |
+| **Total** | **4,476** | 3B/7B × Q4_K_M/Q8_0 |
 
 **New code (all additive, `*_v2`):**
 
@@ -54,7 +55,8 @@ H5 micro-study. All runs are cached (resumable, append-only JSONL); nothing from
 | `src/run_v2.py` | Phase A driver (scaling / crossover / compression), memory sampling, resumable |
 | `src/llmlingua_v2.py` | LLMLingua-2 external baseline wrapper |
 | `src/h5_v2.py` | H5 prefix/KV-cache + prefetch micro-study |
-| `src/analyze_v2.py` | Phase B: 37 figures, stats, `FULL_RESULTS_v2.md`, `summary_v2.json` |
+| `src/retrieval_v2.py` | BM25 / dense / hybrid retrieval-mode study (§13) |
+| `src/analyze_v2.py` | Phase B: 41 figures, stats, `FULL_RESULTS_v2.md`, `summary_v2.json` |
 | `scripts/run_v2.sh` | end-to-end v2 runner |
 
 ### 1.2 Key results
@@ -104,6 +106,9 @@ longer trivial: compression is a net latency loss below it, a net win above.
 - **§17 — scorer ablation (cross-encoder vs BM25):** BM25 costs ~1.9 ms vs the cross-encoder's ~989 ms,
   yet the CE buys only small gains (7B Q8: F1 0.556 vs 0.539, gold-in-ev 0.633 vs 0.600) — on CPU the
   CE's ~500× cost rarely pays for itself.
+- **§13 — retrieval modes:** **hybrid (BM25 + dense RRF) beats BM25 on both quality and grounding** in
+  most cells — 7B/Q4 HotpotQA F1 0.522 → 0.587 (dense) → **0.589 (hybrid)**, gold-in-ev 0.633 → 0.700 →
+  0.733; 2Wiki 7B/Q4 0.274 → 0.315. Retrieval quality moves grounding more than compression does.
 
 **Baseline — LLMLingua-2.** Its own compressor cost (~1.0–2.5 s) exceeds the cross-encoder's, so its
 S_net (≈1.0–1.8×) trails DECAF's (≈1.5–4.5×), and DECAF keeps more gold evidence at aggressive ratios.
@@ -120,12 +125,12 @@ are not significant after correction — reported honestly, with the Pareto fron
 
 ### 1.3 Deliverables (`results_v2/`)
 
-- `FULL_RESULTS_v2.md` — 8 sections (0 headline · 1 scaling · 2 break-even · 3 compression ·
-  4 λ/ablation · 5 statistics · 6 H5 · 7 figure index).
-- `summary_v2.json` — all fitted curves, per-method stats, break-even, H5, paired tests.
-- **39 figures**: scaling (TPOT/prefill/TTFT/E2E/decode-share/RSS/panel), crossover,
+- `FULL_RESULTS_v2.md` — 9 sections (0 headline · 1 scaling · 2 break-even · 3 compression ·
+  4 λ/ablation · 5 statistics · 6 H5 · 7 retrieval · 8 figure index).
+- `summary_v2.json` — all fitted curves, per-method stats, break-even, H5, retrieval, paired tests.
+- **41 figures**: scaling (TPOT/prefill/TTFT/E2E/decode-share/RSS/panel), crossover,
   break-even curves + L* bar + overhead-vs-savings, Pareto (F1×E2E, ×TTFT, ×retained, frontier),
-  TTFT-vs-TPOT, grounding, λ-sweep, ablation, E2 ratio grid, §17 scorer ablation,
+  TTFT-vs-TPOT, grounding, λ-sweep, ablation, E2 ratio grid, §17 scorer ablation, retrieval modes,
   method×model heatmap, dataset comparison, CIs, stats forest, and H5 (prefix/reuse/prefetch).
 
 ### 1.4 Bugs found and fixed (v2)
@@ -149,13 +154,13 @@ are not significant after correction — reported honestly, with the Pareto fron
 - [ ] Energy / RAPL-style telemetry (not exposed on this macOS box) and achieved-bandwidth vs roofline.
 - [ ] Citation-correctness grounding where gold citations exist.
 - [ ] LongBench multi-document QA, TriviaQA/NQ single-hop (E9 breadth).
-- [ ] Dense / hybrid retrieval top-k end-to-end (only BM25 top-5 so far).
 - [ ] More queries (>30) to tighten the paired statistics.
 - [ ] Paper-ready "Preliminary Results" section from `results_v2/`.
 
 **Completed in the latest batch:**
 - [x] **E2** exact compression-ratio grid (0.2 / 0.4 / 0.5 / 0.6 / 0.8).
 - [x] **§17** scorer on/off ablation (cross-encoder vs BM25).
+- [x] **§13** dense / hybrid retrieval top-k (BM25 vs dense vs hybrid).
 
 ---
 

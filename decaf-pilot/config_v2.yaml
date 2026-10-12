@@ -62,6 +62,14 @@ h5:
   prefix_lengths: [2048, 8192]
   replicates: 2
 
+# Sec.13 retrieval-mode study (BM25 vs dense vs hybrid top-k)
+retrieval:
+  retrievers: [dense, hybrid]
+  dense_model: "BAAI/bge-small-en-v1.5"
+  methods: [full, fixed_0.5, decaf_lam6]
+  models: ["qwen2.5:3b-instruct", "qwen2.5:7b-instruct-q4_K_M"]
+  n_questions: 30
+
 scorer:
   cross_encoder: BAAI/bge-reranker-base
   max_length: 512
@@ -80,4 +88,5 @@ paths:
   compress_cache: cache_v2/compression.jsonl
   ce_cache: cache_v2/ce_scores
   h5_cache: cache_v2/h5_prefix.jsonl
+  retrieval_cache: cache_v2/retrieval.jsonl
   results: results_v2

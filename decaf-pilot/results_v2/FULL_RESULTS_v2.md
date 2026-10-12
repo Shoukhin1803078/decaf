@@ -421,7 +421,26 @@ Figures: `fig_v2_stats_forest.png`. Full numbers in `summary_v2.json` under `sta
 
 Figures: `fig_v2_h5_prefix.png`, `fig_v2_h5_reuse.png`, `fig_v2_h5_prefetch.png`.
 
-## 7. Figure index
+## 7. Retrieval modes (Sec.13: BM25 vs dense vs hybrid)
+
+| run                        |    F1 |   gold-in-ev |   retained |   E2E(ms) |
+|:---------------------------|------:|-------------:|-----------:|----------:|
+| 3B / Q4_K_M|hotpot|bm25    | 0.291 |        0.633 |      0.128 |      1054 |
+| 3B / Q4_K_M|hotpot|dense   | 0.3   |        0.7   |      0.139 |      1060 |
+| 3B / Q4_K_M|hotpot|hybrid  | 0.31  |        0.733 |      0.143 |       879 |
+| 3B / Q4_K_M|twowiki|bm25   | 0.281 |        0.533 |      0.102 |       958 |
+| 3B / Q4_K_M|twowiki|dense  | 0.275 |        0.567 |      0.115 |      1090 |
+| 3B / Q4_K_M|twowiki|hybrid | 0.304 |        0.567 |      0.108 |       882 |
+| 7B / Q4_K_M|hotpot|bm25    | 0.522 |        0.633 |      0.128 |       837 |
+| 7B / Q4_K_M|hotpot|dense   | 0.587 |        0.7   |      0.139 |       855 |
+| 7B / Q4_K_M|hotpot|hybrid  | 0.589 |        0.733 |      0.143 |       706 |
+| 7B / Q4_K_M|twowiki|bm25   | 0.274 |        0.533 |      0.102 |      1501 |
+| 7B / Q4_K_M|twowiki|dense  | 0.263 |        0.567 |      0.115 |      1614 |
+| 7B / Q4_K_M|twowiki|hybrid | 0.315 |        0.567 |      0.108 |      1744 |
+
+Figures: `fig_v2_retrieval.png`, `fig_v2_retrieval_pareto.png`.
+
+## 8. Figure index
 
 - `fig_v2_scaling_tpot.png`
 - `fig_v2_scaling_prefill.png`
@@ -436,6 +455,8 @@ Figures: `fig_v2_h5_prefix.png`, `fig_v2_h5_reuse.png`, `fig_v2_h5_prefetch.png`
 - `fig_v2_crossover_length.png`
 - `fig_v2_h5_prefix.png`
 - `fig_v2_h5_reuse.png`
+- `fig_v2_retrieval.png`
+- `fig_v2_retrieval_pareto.png`
 - `fig_v2_breakeven_curves.png`
 - `fig_v2_Lstar_bar.png`
 - `fig_v2_pareto_f1_e2e.png`

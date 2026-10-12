@@ -16,6 +16,8 @@
     "fig_v2_crossover_length.png",
     "fig_v2_h5_prefix.png",
     "fig_v2_h5_reuse.png",
+    "fig_v2_retrieval.png",
+    "fig_v2_retrieval_pareto.png",
     "fig_v2_breakeven_curves.png",
     "fig_v2_Lstar_bar.png",
     "fig_v2_pareto_f1_e2e.png",
@@ -559,6 +561,80 @@
       "partial_cold": 63927.08191649945,
       "partial_warm": 465.03120899978967,
       "warm_reduction_pct": 99.75102145246856
+    }
+  },
+  "retrieval": {
+    "3B / Q4_K_M|hotpot|bm25": {
+      "f1": 0.29147763733004006,
+      "gold_in_evidence": 0.6333333333333333,
+      "retained_ratio": 0.12831759717044272,
+      "e2e_ms": 1054.2730414999824
+    },
+    "3B / Q4_K_M|hotpot|dense": {
+      "f1": 0.3003895003208505,
+      "gold_in_evidence": 0.7,
+      "retained_ratio": 0.1385489211943792,
+      "e2e_ms": 1060.3621039990685
+    },
+    "3B / Q4_K_M|hotpot|hybrid": {
+      "f1": 0.3097203437693409,
+      "gold_in_evidence": 0.7333333333333333,
+      "retained_ratio": 0.14291745349153867,
+      "e2e_ms": 879.1047499998967
+    },
+    "3B / Q4_K_M|twowiki|bm25": {
+      "f1": 0.28079788487986096,
+      "gold_in_evidence": 0.5333333333333333,
+      "retained_ratio": 0.10207069477760193,
+      "e2e_ms": 957.6026665008612
+    },
+    "3B / Q4_K_M|twowiki|dense": {
+      "f1": 0.27494993166348664,
+      "gold_in_evidence": 0.5666666666666667,
+      "retained_ratio": 0.11483321147047443,
+      "e2e_ms": 1089.8583330017573
+    },
+    "3B / Q4_K_M|twowiki|hybrid": {
+      "f1": 0.30360490242372057,
+      "gold_in_evidence": 0.5666666666666667,
+      "retained_ratio": 0.10835294636284208,
+      "e2e_ms": 881.5778539992607
+    },
+    "7B / Q4_K_M|hotpot|bm25": {
+      "f1": 0.5222044241037376,
+      "gold_in_evidence": 0.6333333333333333,
+      "retained_ratio": 0.12831759717044272,
+      "e2e_ms": 837.3979170009989
+    },
+    "7B / Q4_K_M|hotpot|dense": {
+      "f1": 0.5872044241037375,
+      "gold_in_evidence": 0.7,
+      "retained_ratio": 0.1385489211943792,
+      "e2e_ms": 854.9135624998598
+    },
+    "7B / Q4_K_M|hotpot|hybrid": {
+      "f1": 0.5885369220151829,
+      "gold_in_evidence": 0.7333333333333333,
+      "retained_ratio": 0.14291745349153867,
+      "e2e_ms": 706.4979789993231
+    },
+    "7B / Q4_K_M|twowiki|bm25": {
+      "f1": 0.27438221520830214,
+      "gold_in_evidence": 0.5333333333333333,
+      "retained_ratio": 0.10207069477760193,
+      "e2e_ms": 1501.316042000326
+    },
+    "7B / Q4_K_M|twowiki|dense": {
+      "f1": 0.26318563401172096,
+      "gold_in_evidence": 0.5666666666666667,
+      "retained_ratio": 0.11483321147047443,
+      "e2e_ms": 1614.4469999999274
+    },
+    "7B / Q4_K_M|twowiki|hybrid": {
+      "f1": 0.3154444862705732,
+      "gold_in_evidence": 0.5666666666666667,
+      "retained_ratio": 0.10835294636284208,
+      "e2e_ms": 1744.2359374981606
     }
   },
   "break_even": {
