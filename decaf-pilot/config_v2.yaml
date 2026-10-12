@@ -32,6 +32,10 @@ models:
     label: "7B / Q4_K_M"
     family: "7B"
     quant: "Q4_K_M"
+  - name: qwen2.5:7b-instruct-q8_0
+    label: "7B / Q8_0"
+    family: "7B"
+    quant: "Q8_0"
 
 # E1/E8: decode-scaling curve TPOT(L)
 scaling:

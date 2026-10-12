@@ -3,8 +3,9 @@
 **Date:** 2026-10-12
 **Scope:** Phase 1 (v2) — **full experiments** for the DECAF proposal
 (*"When Does Context Compression Accelerate CPU RAG? A Decode-Centric Study"*).
-**State:** ✅ Complete, reproducible end-to-end. 2,097 runs across 3 models × 2 datasets;
-37 figures + report in `results_v2/`. The Phase-0 pilot is preserved (§7) and superseded.
+**State:** ✅ Complete, reproducible end-to-end. 2,796 runs across 4 model×quant configs
+(3B/7B × Q4_K_M/Q8_0) × 2 datasets; 37 figures + report in `results_v2/`.
+The Phase-0 pilot is preserved (§3) and superseded.
 
 Location: `decaf-pilot/`
 
@@ -14,7 +15,7 @@ Location: `decaf-pilot/`
 
 | | Phase 0 (pilot) | Phase 1 (v2, **current**) |
 |---|---|---|
-| Models | 3B Q4_K_M | 3B Q4 · 3B Q8 · 7B Q4 |
+| Models | 3B Q4_K_M | 3B/7B × Q4_K_M, Q8_0 |
 | Datasets | HotpotQA | HotpotQA + 2WikiMultihopQA |
 | Scorer | BM25 (~1.4 ms) | cross-encoder `bge-reranker-base` (~960 ms) |
 | Baselines | fixed ratio, relevance | + **LLMLingua-2** |
@@ -22,7 +23,7 @@ Location: `decaf-pilot/`
 | Generation sweep | — | N_out ∈ {16, 64, 128} (crossover) |
 | Secondary (H5) | — | prefix/KV reuse + prefetch |
 | Statistics | — | bootstrap CI · McNemar · Holm |
-| Runs | 220 | **2,097** |
+| Runs | 220 | **2,796** |
 | Deliverables | `results/` | `results_v2/` (37 figures, `FULL_RESULTS_v2.md`) |
 
 ---
@@ -31,16 +32,16 @@ Location: `decaf-pilot/`
 
 ### 1.1 What was done
 
-Matrix: **3 models × 2 datasets × 11 methods**, plus scaling, crossover and an H5 micro-study.
-All runs are cached (resumable, append-only JSONL); nothing from Phase 0 was modified.
+Matrix: **4 model×quant configs × 2 datasets × 11 methods**, plus scaling, crossover and an
+H5 micro-study. All runs are cached (resumable, append-only JSONL); nothing from Phase 0 was modified.
 
 | Family | Runs | Description |
 |---|---:|---|
-| Scaling (E1/E8) | 42 | TPOT(L)/prefill(L) at L ∈ {256 … 16384}, 2 reps × 3 models |
-| Crossover (H1) | 27 | decode share vs N_out ∈ {16,64,128} at L ∈ {512,2048,8192} × 3 models |
-| Compression (E2–E7, E9) | 1,980 | 3 models × 2 datasets × 30 q × 11 methods |
-| H5 secondary | 48 | cold/warm/partial TTFT prefix-cache study × 3 models × 2 lengths |
-| **Total** | **2,097** | |
+| Scaling (E1/E8) | 56 | TPOT(L)/prefill(L) at L ∈ {256 … 16384}, 2 reps × 4 configs |
+| Crossover (H1) | 36 | decode share vs N_out ∈ {16,64,128} at L ∈ {512,2048,8192} × 4 configs |
+| Compression (E2–E7, E9) | 2,640 | 4 configs × 2 datasets × 30 q × 11 methods |
+| H5 secondary | 64 | cold/warm/partial TTFT prefix-cache study × 4 configs × 2 lengths |
+| **Total** | **2,796** | 3B/7B × Q4_K_M/Q8_0 |
 
 **New code (all additive, `*_v2`):**
 
@@ -66,6 +67,7 @@ prefill super-linearity; prefill, not decode, dominates for realistic contexts.
 | 3B / Q4_K_M | 5.51 | 0.990 | +0.85 | ~867 |
 | 3B / Q8_0 | 5.28 | 0.994 | +0.81 | ~916 |
 | 7B / Q4_K_M | 10.92 | 0.998 | +1.30 | ~584 |
+| 7B / Q8_0 | 10.57 | 0.996 | +1.24 | ~867 |
 
 **E4 — break-even L\* (real cross-encoder overhead).** With T_compress ≈ **962 ms**, L\* is no
 longer trivial: compression is a net latency loss below it, a net win above.
@@ -75,6 +77,7 @@ longer trivial: compression is a net latency loss below it, a net win above.
 | 3B / Q4_K_M | 154 | 962 | **327** |
 | 3B / Q8_0 | 154 | 962 | **335** |
 | 7B / Q4_K_M | 154 | 962 | **241** |
+| 7B / Q8_0 | 154 | 963 | **244** |
 
 **E2/E3/E5/E6/E7 — quality, latency, overhead, grounding.** Example (HotpotQA, DECAF λ=6):
 
@@ -83,11 +86,15 @@ longer trivial: compression is a net latency loss below it, a net win above.
 | 3B / Q4_K_M | 0.291 | 0.128 | 0.633 | 3.66× | **1.89×** |
 | 3B / Q8_0 | 0.330 | 0.128 | 0.633 | 2.75× | 1.69× |
 | 7B / Q4_K_M | 0.522 | 0.128 | 0.633 | 9.81× | **4.50×** |
+| 7B / Q8_0 | 0.556 | 0.128 | 0.633 | 7.85× | **4.03×** |
 
 - **Overhead matters:** the ~960 ms cross-encoder cuts gross speedup roughly in half — the pilot's
   "always a net win" conclusion was an artifact of the ~1.4 ms BM25 scorer.
-- **Model-size/quant interaction (E5/E6):** compression *helps* the 3B (distractor harm) but *hurts*
-  the 7B on HotpotQA (full-context F1 0.595 → DECAF 0.522); grounding falls monotonically with
+- **Model-size / quant interaction (E5/E6, now the full 2×2):** model **size** dominates — L\* ≈ 327–335 (3B)
+  vs 241–244 (7B) — while **quantization barely moves L\*** (Q4 vs Q8 within ~1–8 tok at each size).
+  Q8 gives higher F1 than Q4 at both sizes (e.g. 7B 0.611 vs 0.595 on full context), and higher precision
+  is not slower here (Q8 prefill ≤ Q4 on this CPU, likely Q4_K dequant overhead). Compression *helps* the
+  smaller models (distractor harm) but *hurts* the 7B on HotpotQA; grounding falls monotonically with
   retained evidence (0.833 full → 0.633).
 - **E9 generalization:** 2Wiki is harder (best F1 0.336); same qualitative ordering.
 
@@ -120,7 +127,7 @@ are not significant after correction — reported honestly, with the Pareto fron
    `experiments/decaf-pilot/`), so `pip install` wrote to the wrong site-packages. Fixed by using
    `.venv/bin/python -m pip`; consider recreating the venv.
 2. **Break-even intercept/slope swap.** The prefill fit was unpacked `(slope, intercept)` while
-   stored `(intercept, slope)` → `L* = inf`. Fixed → meaningful L\* (327/335/241).
+   stored `(intercept, slope)` → `L* = inf`. Fixed → meaningful L\* (241–335 across the 4 configs).
 3. **Crossover figures filtered by label, not name.** Both crossover figures came out empty (one
    collapsed to 45 px). Fixed.
 4. **S_net ignored compressor cost.** E2E is generation-only, so gross speedup overstated the win;
@@ -147,7 +154,7 @@ are not significant after correction — reported honestly, with the Pareto fron
 cd decaf-pilot
 python3 -m venv .venv && .venv/bin/python -m pip install -r requirements.txt   # once
 .venv/bin/python -m pip install "sentence-transformers>=3.0" llmlingua psutil  # v2 extras
-ollama pull qwen2.5:3b-instruct-q8_0 && ollama pull qwen2.5:7b-instruct-q4_K_M  # once
+ollama pull qwen2.5:3b-instruct-q8_0 && ollama pull qwen2.5:7b-instruct-q4_K_M && ollama pull qwen2.5:7b-instruct-q8_0  # once
 
 .venv/bin/python -m src.run_v2 --config config_v2.yaml --mode all   # Phase A (resumable)
 .venv/bin/python -m src.h5_v2 --config config_v2.yaml               # H5 micro-study
