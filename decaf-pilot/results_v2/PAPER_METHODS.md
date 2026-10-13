@@ -30,11 +30,13 @@ machine-specific; the shapes and break-even behaviour are the contribution.
 
 ## 3.2 Datasets
 
-Two multi-hop QA benchmarks with gold supporting facts, in the **provided-context (distractor)**
-setting so retrieval depth and distractor harm are controlled:
+Two multi-hop QA benchmarks plus one single-hop benchmark, all with gold supporting facts, in the
+**provided-context** setting so retrieval depth and distractor harm are controlled:
 
 - **HotpotQA** (distractor) — 10 candidate paragraphs/question (2 gold + 8 distractors).
 - **2WikiMultihopQA** — same structure, harder, 4 gold paragraphs/question (two hops).
+- **TriviaQA** (rc.wikipedia, single-hop) — provided Wikipedia article(s) per question
+  (`entity_pages`), truncated to 20 sentences/document; gold = answer-alias-bearing sentences.
 
 We sample **n = 200** questions per dataset with a fixed seed (deterministic shuffle), and hold the
 prompt template, retrieval depth and metrics identical across all configurations.

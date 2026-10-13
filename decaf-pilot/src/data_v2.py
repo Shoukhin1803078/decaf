@@ -11,6 +11,7 @@ import os
 import random
 from typing import Dict, List, Tuple
 
+from . import contexts
 from .data import Example, Paragraph
 
 
@@ -58,6 +59,64 @@ def _build_examples(ds, idx: List[int]) -> List[Example]:
     return examples
 
 
+def _iter_docs(sr):
+    """Yield per-document dicts from either a list-of-dicts or a columnar dict-of-lists."""
+    if isinstance(sr, dict):
+        keys = list(sr.keys())
+        n = len(sr[keys[0]]) if keys else 0
+        for j in range(n):
+            yield {k: sr[k][j] for k in keys}
+    else:
+        for d in (sr or []):
+            yield d if isinstance(d, dict) else {}
+
+
+def _build_trivia(ds, idx: List[int], max_sent: int = 20) -> List[Example]:
+    """TriviaQA (rc.wikipedia): candidate docs are Wikipedia articles (entity_pages),
+    truncated to `max_sent` sentences; gold = sentences containing the answer aliases."""
+    examples: List[Example] = []
+    for i in idx:
+        row = ds[i]
+        docs = list(_iter_docs(row.get("entity_pages")))
+        if not docs:
+            docs = list(_iter_docs(row.get("search_results")))
+        paras: List[Paragraph] = []
+        for d in docs:
+            text = d.get("wiki_context") or d.get("search_context") or ""
+            if not text.strip():
+                continue
+            sents = contexts.split_sentences(text)[:max_sent]
+            if sents:
+                paras.append(Paragraph(d.get("title") or "", sents))
+        if not paras:
+            continue
+        ans = row.get("answer") or {}
+        aliases = [ans.get("value", "")] + list(ans.get("aliases") or [])
+        aliases = [str(a).strip().lower() for a in aliases if a and str(a).strip()]
+        support: Dict[str, List[int]] = {}
+        gold_titles: List[str] = []
+        for p in paras:
+            hits = [j for j, s in enumerate(p.sentences) if any(a in s.lower() for a in aliases)]
+            if hits:
+                support[p.title] = hits
+                gold_titles.append(p.title)
+        if not gold_titles:
+            continue
+        examples.append(
+            Example(
+                qid=str(row.get("question_id", i)),
+                question=row["question"],
+                answer=str(ans.get("value", "")),
+                paragraphs=paras,
+                gold_titles=sorted(set(gold_titles)),
+                qtype="single-hop",
+                level="triviaqa",
+                support_sentences=support,
+            )
+        )
+    return examples
+
+
 def load_examples_v2(spec: dict, seed: int, cache_dir: str) -> List[Example]:
     """Load or materialise a sampled subset for a dataset spec."""
     os.makedirs(cache_dir, exist_ok=True)
@@ -71,8 +130,12 @@ def load_examples_v2(spec: dict, seed: int, cache_dir: str) -> List[Example]:
     ds = load_dataset(spec["hf_name"], spec.get("hf_config"), split=spec["split"])
     idx = list(range(len(ds)))
     random.Random(seed).shuffle(idx)
-    idx = idx[: spec["n_questions"]]
-    examples = _build_examples(ds, idx)
+    if spec.get("loader") == "trivia":
+        # oversample: some questions are dropped (no gold doc / too few documents)
+        pool = idx[: min(len(idx), spec["n_questions"] * 5)]
+        examples = _build_trivia(ds, pool)[: spec["n_questions"]]
+    else:
+        examples = _build_examples(ds, idx[: spec["n_questions"]])
     with open(path, "w") as f:
         json.dump([e.to_record() for e in examples], f)
     return examples

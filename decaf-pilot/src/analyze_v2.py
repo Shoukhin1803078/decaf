@@ -50,6 +50,7 @@ METHOD_ORDER = ["full", "fixed_0.8", "fixed_0.6", "fixed_0.5", "fixed_0.4", "fix
                 "llmlingua_0.5", "llmlingua_0.2", "rel_iso",
                 "decaf_nocov_lam6", "decaf_noreorder_lam6", "bm25_decaf_lam6",
                 "decaf_lam2", "decaf_lam6", "decaf_lam15"]
+DS_LABEL = {"hotpot": "HotpotQA", "twowiki": "2Wiki", "trivia": "TriviaQA"}
 
 
 def _safe(name, fn, log):
@@ -128,6 +129,8 @@ def main() -> None:
                                  ["model", "kind", "L", "rep"]).all())
     rt = pd.DataFrame(JsonlCache(os.path.join(ROOT, cfg["paths"]["retrieval_cache"]),
                                  ["model", "dataset", "retriever", "qid", "method"]).all())
+    ds_mk = ([(ds, mk) for ds, mk in zip(sorted(cp["dataset"].unique()), ["o", "s", "^", "D", "v"])]
+             if not cp.empty else [])
     if sc.empty:
         raise SystemExit("no scaling runs — run `python -m src.run_v2 --mode scaling` first")
 
@@ -378,7 +381,7 @@ def main() -> None:
             cmap = {"bm25": "tab:blue", "dense": "tab:orange", "hybrid": "tab:green"}
             for m in rmodels:
                 for rtv in retrievers:
-                    for ds, mk in [("hotpot", "o"), ("twowiki", "s")]:
+                    for ds, mk in ds_mk:
                         sub = _retr_sub(m, rtv, ds, pm_r)
                         if sub.empty:
                             continue
@@ -386,8 +389,8 @@ def main() -> None:
                                    color=cmap[rtv], alpha=0.85)
             for rtv in retrievers:
                 ax.scatter([], [], color=cmap[rtv], label=rtv, s=40)
-            ax.scatter([], [], color="k", marker="o", label="HotpotQA", s=40)
-            ax.scatter([], [], color="k", marker="s", label="2Wiki", s=40)
+            for ds, mk in ds_mk:
+                ax.scatter([], [], color="k", marker=mk, label=DS_LABEL.get(ds, ds), s=40)
             ax.set_xlabel("E2E (ms)"); ax.set_ylabel("F1")
             ax.set_title(f"Retrieval mode — quality vs latency ({pm_r})")
             ax.legend(fontsize=7, ncol=2)
@@ -501,10 +504,10 @@ def main() -> None:
                 g = A[A["model_label"] == m]
                 if g.empty:
                     ax.set_visible(False); continue
-                for ds, mk in [("hotpot", "o"), ("twowiki", "s")]:
+                for ds, mk in ds_mk:
                     gg = g[g["dataset"] == ds]
                     ax.scatter(gg[xcol], gg[metric], s=45, marker=mk, alpha=0.8,
-                               label=("HotpotQA" if ds == "hotpot" else "2Wiki"))
+                               label=DS_LABEL.get(ds, ds))
                     for _, r in gg.iterrows():
                         ax.annotate(LABEL.get(r["method"], r["method"]).split(" ")[0],
                                     (r[xcol], r[metric]), fontsize=5, alpha=0.7)
@@ -520,7 +523,7 @@ def main() -> None:
 
         def fig_pareto_all():
             fig, ax = plt.subplots(1, 2, figsize=(11, 4.2))
-            mks = {"hotpot": "o", "twowiki": "s"}
+            mks = dict(ds_mk)
             for m in morder:
                 g = A[A["model_label"] == m]
                 for ds in g["dataset"].unique():
@@ -542,7 +545,7 @@ def main() -> None:
                 g = A[A["model_label"] == m]
                 if g.empty:
                     continue
-                for ds, mk in [("hotpot", "o"), ("twowiki", "s")]:
+                for ds, mk in ds_mk:
                     gg = g[g["dataset"] == ds].sort_values("retained_ratio")
                     ax[0].plot(gg["retained_ratio"], gg["evidence_recall"], mk + "-", color=mcolor[m], ms=4, alpha=0.8,
                                label=f"{m}·{ds}")
@@ -557,7 +560,7 @@ def main() -> None:
         def fig_quality_grounding():
             fig, ax = plt.subplots(figsize=(6.0, 4.4))
             for m in morder:
-                for ds, mk in [("hotpot", "o"), ("twowiki", "s")]:
+                for ds, mk in ds_mk:
                     gg = A[(A["model_label"] == m) & (A["dataset"] == ds)]
                     ax.scatter(gg["gold_in_evidence"], gg["f1"], s=45, color=mcolor[m], marker=mk, alpha=0.8,
                                label=f"{m}·{ds}" if ds == "hotpot" else None)
@@ -625,7 +628,7 @@ def main() -> None:
         def fig_ev_scatter():
             fig, ax = plt.subplots(figsize=(5.8, 4.4))
             for m in morder:
-                for ds, mk in [("hotpot", "o"), ("twowiki", "s")]:
+                for ds, mk in ds_mk:
                     gg = A[(A["model_label"] == m) & (A["dataset"] == ds)]
                     ax.scatter(gg["evidence_recall"], gg["evidence_precision"], s=45, color=mcolor[m], marker=mk, alpha=0.8)
             ax.set_xlabel("evidence recall"); ax.set_ylabel("evidence precision")
@@ -672,7 +675,7 @@ def main() -> None:
         def fig_ttft_tpot():
             fig, ax = plt.subplots(figsize=(6.4, 4.4))
             for m in morder:
-                for ds, mk in [("hotpot", "o"), ("twowiki", "s")]:
+                for ds, mk in ds_mk:
                     gg = A[(A["model_label"] == m) & (A["dataset"] == ds)]
                     ax.scatter(gg["ttft_ms"], gg["tpot_ms"], s=45, color=mcolor[m], marker=mk, alpha=0.8)
             ax.set_xlabel("TTFT (ms) — prefill cost"); ax.set_ylabel("TPOT (ms/token) — decode cost")
@@ -684,7 +687,7 @@ def main() -> None:
         def fig_overhead_savings():
             fig, ax = plt.subplots(figsize=(6.2, 4.6))
             for m in morder:
-                for ds, mk in [("hotpot", "o"), ("twowiki", "s")]:
+                for ds, mk in ds_mk:
                     g = A[(A["model_label"] == m) & (A["dataset"] == ds)]
                     full = g[g["method"] == "full"]
                     if full.empty:
@@ -712,7 +715,7 @@ def main() -> None:
                     front.append(i); best = Y[i]
             fig, ax = plt.subplots(figsize=(6.6, 4.4))
             for m in morder:
-                for ds, mk in [("hotpot", "o"), ("twowiki", "s")]:
+                for ds, mk in ds_mk:
                     gg = A[(A["model_label"] == m) & (A["dataset"] == ds)]
                     ax.scatter(gg["e2e_ms"], gg["f1"], s=40, color=mcolor[m], marker=mk, alpha=0.7)
             ax.plot(X[front], Y[front], "k-o", lw=1.2, ms=5, label="Pareto frontier")
@@ -812,11 +815,11 @@ def main() -> None:
             lams = [2, 6, 15]
             fig, axes = plt.subplots(1, 3, figsize=(12, 3.6))
             for m in morder:
-                for ds, mk in [("hotpot", "o"), ("twowiki", "s")]:
+                for ds, mk in ds_mk:
                     pass
             for m in morder:
                 for col, ax in zip(["retained_ratio", "f1", "gold_in_evidence"], axes):
-                    for ds, mk in [("hotpot", "o"), ("twowiki", "s")]:
+                    for ds, mk in ds_mk:
                         ys = []
                         for lm in lam_methods:
                             r = A[(A["model_label"] == m) & (A["dataset"] == ds) & (A["method"] == lm)]
@@ -857,7 +860,7 @@ def main() -> None:
             fixed = ["fixed_0.2", "fixed_0.4", "fixed_0.5", "fixed_0.6", "fixed_0.8", "full"]
             fig, ax = plt.subplots(1, 2, figsize=(11, 4.0))
             for m in models:
-                for ds, mk in [("hotpot", "o"), ("twowiki", "s")]:
+                for ds, mk in ds_mk:
                     sub = A[(A["model_label"] == m["label"]) & (A["dataset"] == ds)
                             & (A["method"].isin(fixed))].sort_values("retained_ratio")
                     if sub.empty:

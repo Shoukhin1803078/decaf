@@ -6,20 +6,20 @@ proposal's empirical backbone directly on this machine (Ollama / llama.cpp, CPU)
 the `TPOT(L)`/`prefill(L)` curves, the **break-even context length `L*`**, the
 quality–latency–grounding Pareto, and a training-free CPU-aware evidence selector.
 
-> **Status:** ✅ v2 complete — **12,660 runs** across 4 model×quant configs and 2 datasets
-> (**all at n=200**), **41 figures** + report in `results_v2/`. The Phase-0 pilot is
-> preserved in `results/` (historical). See `STATUS.md` for full progress.
+> **Status:** ✅ v2 complete — **15,236 runs** across 4 model×quant configs and **3 datasets**
+> (HotpotQA, 2Wiki, TriviaQA), 3B configs at **n=200**; **41 figures** + report in `results_v2/`.
+> The Phase-0 pilot is preserved in `results/` (historical). See `STATUS.md` for full progress.
 
 ## At a glance
 
 | | |
 |---|---|
 | Models | `qwen2.5:3b-instruct` (Q4_K_M), `qwen2.5:3b-instruct-q8_0`, `qwen2.5:7b-instruct-q4_K_M`, `qwen2.5:7b-instruct-q8_0` |
-| Datasets | HotpotQA (distractor) + 2WikiMultihopQA |
+| Datasets | HotpotQA (multi-hop) + 2WikiMultihopQA (multi-hop) + TriviaQA (single-hop) |
 | Scorer | cross-encoder `BAAI/bge-reranker-base` (CPU) |
 | Compressors / baselines | DECAF (λ sweep), fixed-ratio, relevance top-m, **LLMLingua-2**, BM25-scorer variant |
 | Retrieval | BM25 · dense (`BAAI/bge-small-en-v1.5`) · hybrid (RRF) |
-| Runs | scaling 56 · crossover 60 · compression 11,760 · retrieval 720 · H5 64 = **12,660** |
+| Runs | scaling 56 · crossover 60 · compression 14,336 · retrieval 720 · H5 64 = **15,236** |
 | Outputs | `results_v2/` — 41 figures, `FULL_RESULTS_v2.md`, `summary_v2.json` |
 
 ## Headline results
@@ -49,6 +49,9 @@ quality–latency–grounding Pareto, and a training-free CPU-aware evidence sel
 - **Generation length:** extending the N_out sweep to 512 shows the decode share **plateaus** rather than
   rising, because the model hits **EOS at ~40–64 tokens** — so "prefill dominates" holds for *natural*
   answer lengths (testing longer needs EOS-disabled decoding).
+- **Dataset dependence (E9):** on single-hop **TriviaQA**, compression **helps even the 7B** — 3B/Q4
+  DECAF λ6 ΔF1 +0.081 (Holm p=0.002), 7B/Q4 +0.087 (n≈29). The "compression hurts the 7B" effect is
+  therefore **multi-hop-specific**, not universal.
 - **LLMLingua-2** costs more to run than the cross-encoder and its S_net trails DECAF's.
 
 Absolute latencies are machine-specific; the **shapes** (prefill-dominated, grounding cost,

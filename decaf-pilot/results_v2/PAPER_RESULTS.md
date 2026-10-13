@@ -5,11 +5,12 @@ break-even thresholds.*
 
 **Setup.** Single CPU host (8 physical cores, 16 GB RAM), Ollama / llama.cpp. Four
 model×quantization configs — Qwen2.5-**3B**-Instruct and **7B**-Instruct in **Q4_K_M** and **Q8_0**.
-Two multi-hop QA datasets — HotpotQA (distractor) and 2WikiMultihopQA. Scorer: cross-encoder
-`BAAI/bge-reranker-base` (CPU). Retrieval modes: BM25, dense (`bge-small-en-v1.5`), hybrid (RRF).
-**All main comparisons use n = 200 questions per dataset**; a few probe methods are reported at n = 30
-and marked as such. 12,660 runs total; statistics are paired bootstrap CIs, McNemar's test (EM) and
-Holm–Bonferroni correction across the method family.
+Three QA datasets — **HotpotQA** and **2WikiMultihopQA** (multi-hop) and **TriviaQA** (single-hop).
+Scorer: cross-encoder `BAAI/bge-reranker-base` (CPU). Retrieval modes: BM25, dense
+(`bge-small-en-v1.5`), hybrid (RRF). **Main comparisons use n = 200 questions per dataset** (except
+the TriviaQA 7B configs, which are partial and marked); a few probe methods are reported at n = 30.
+15,236 runs total; statistics are paired bootstrap CIs, McNemar's test (EM) and Holm–Bonferroni
+correction across the method family.
 
 ---
 
@@ -133,6 +134,23 @@ interaction (E6/RQ4)** — and it is invisible at n = 30, which is why the scale
 Quality is **non-monotone in the retention ratio**, and the optimum differs by model (3B peaks at
 the most aggressive ratio; 7B peaks at ~60%). At 80% retention the compressor's cost cancels the
 small prefill saving (S_net ≈ 1.0). *Figure:* `fig_v2_ratio_grid`.
+
+### 3.4 Single-hop generalization (TriviaQA)
+
+Adding a **single-hop** dataset (TriviaQA, provided Wikipedia passages) reverses the sign for the
+large model — here compression **helps**:
+
+| config | full F1 | DECAF λ6 F1 | ΔF1 (Holm p) | gold-in-ev (full → comp) |
+|---|---:|---:|---|---:|
+| 3B/Q4 | 0.231 | 0.312 | **+0.081 (0.002)** | 0.880 → 0.695 |
+| 3B/Q8 | 0.235 | 0.260 | +0.025 (0.36, n.s.) | 0.880 → 0.695 |
+| 7B/Q4 (n≈29) | 0.518 | 0.594 | +0.087 (n.s.) | 0.900 → 0.828 |
+
+The "compression hurts the 7B" effect seen on multi-hop HotpotQA is therefore **task-specific**, not a
+property of model size alone: on single-hop contexts (dominated by distractor passages) compression
+improves accuracy at **both** sizes, while still degrading grounding. The model-size interaction is
+**dataset-dependent** — an important boundary on the headline claim. *Figures:* the TriviaQA points
+appear in `fig_v2_pareto_all`, `fig_v2_grounding_vs_ratio`, `fig_v2_dataset_compare`.
 
 ---
 

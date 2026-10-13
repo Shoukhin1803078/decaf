@@ -13,6 +13,13 @@ data:
     hf_config: null
     split: validation
     n_questions: 200
+  trivia:
+    tag: trivia
+    hf_name: mandarjoshi/trivia_qa
+    hf_config: rc.wikipedia
+    split: validation
+    n_questions: 200
+    loader: trivia
   cache_dir: data_v2
 
 retriever: bm25
