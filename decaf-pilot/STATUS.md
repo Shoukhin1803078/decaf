@@ -3,8 +3,8 @@
 **Date:** 2026-10-12
 **Scope:** Phase 1 (v2) — **full experiments** for the DECAF proposal
 (*"When Does Context Compression Accelerate CPU RAG? A Decode-Centric Study"*).
-**State:** ✅ Complete, reproducible end-to-end. 8,742 runs across 4 model×quant configs
-(3B/7B × Q4_K_M/Q8_0) × 2 datasets (3B configs scaled to **n=200**); 41 figures + report in
+**State:** ✅ Complete, reproducible end-to-end. 12,660 runs across 4 model×quant configs
+(3B/7B × Q4_K_M/Q8_0) × 2 datasets, **all at n=200**; 41 figures + report in
 `results_v2/`. The Phase-0 pilot is preserved (§3) and superseded.
 
 Location: `decaf-pilot/`
@@ -23,7 +23,7 @@ Location: `decaf-pilot/`
 | Generation sweep | — | N_out ∈ {16, 64, 128, 256, 512} (crossover) |
 | Secondary (H5) | — | prefix/KV reuse + prefetch |
 | Statistics | — | bootstrap CI · McNemar · Holm |
-| Runs | 220 | **8,742** |
+| Runs | 220 | **12,660** |
 | Deliverables | `results/` | `results_v2/` (41 figures, `FULL_RESULTS_v2.md`) |
 
 ---
@@ -39,10 +39,10 @@ study and an H5 micro-study. All runs are cached (resumable, append-only JSONL);
 |---|---:|---|
 | Scaling (E1/E8) | 56 | TPOT(L)/prefill(L) at L ∈ {256 … 16384}, 2 reps × 4 configs |
 | Crossover (H1) | 60 | decode share vs N_out ∈ {16,64,128,256,512} at L ∈ {512,2048,8192} × 4 configs |
-| Compression (E2–E7, E9) | 7,842 | 4 configs × 2 datasets × n (30; 3B = 200) × methods |
+| Compression (E2–E7, E9) | 11,760 | 4 configs × 2 datasets × 200 q × methods (+ n=30 extras) |
 | Retrieval modes (§13) | 720 | BM25 vs dense vs hybrid, 2 models × 2 datasets × 3 methods |
 | H5 secondary | 64 | cold/warm/partial TTFT prefix-cache study × 4 configs × 2 lengths |
-| **Total** | **8,742** | 3B/7B × Q4_K_M/Q8_0 |
+| **Total** | **12,660** | 3B/7B × Q4_K_M/Q8_0 |
 
 **New code (all additive, `*_v2`):**
 
@@ -109,9 +109,11 @@ longer trivial: compression is a net latency loss below it, a net win above.
 - **§13 — retrieval modes:** **hybrid (BM25 + dense RRF) beats BM25 on both quality and grounding** in
   most cells — 7B/Q4 HotpotQA F1 0.522 → 0.587 (dense) → **0.589 (hybrid)**, gold-in-ev 0.633 → 0.700 →
   0.733; 2Wiki 7B/Q4 0.274 → 0.315. Retrieval quality moves grounding more than compression does.
-- **Scale-up to n=200 (3B configs) — power flips the central claim:** 3B/Q4 compression gains become
-  **significant after Holm** (DECAF λ6 ΔF1 +0.077, p=0.009; fixed-50% +0.073, p=0.005; fixed-20%
-  +0.095, p=0.001), where n=30 showed nothing. The 7B configs remain ~n=30.
+- **Scale-up to n=200 (all 4 configs) — power flips the central claims:**
+  - **3B/Q4:** compression **significantly helps** (DECAF λ6 ΔF1 +0.077, p=0.009; fixed-50% +0.073, p=0.005;
+    fixed-20% +0.095, p=0.001) where n=30 showed nothing.
+  - **7B/Q4:** compression **significantly hurts** (DECAF λ6 −0.092, p=0.019; rel_iso −0.092, p=0.056;
+    no-cov −0.085, p=0.025) — a **significant model-size interaction** (E6/RQ4) that n=30 could not resolve.
 - **Generation-length robustness:** extending N_out to 512 shows the decode share **plateaus** (~0.40 at
   short context) instead of rising — because the model hits **EOS at ~40–64 tokens**, so N_out cannot be
   forced higher. The prefill-dominated result therefore holds for *natural* answer lengths; testing true
@@ -163,7 +165,8 @@ are not significant after correction — reported honestly, with the Pareto fron
 - [ ] Energy / RAPL-style telemetry (not exposed on this macOS box) and achieved-bandwidth vs roofline.
 - [ ] Citation-correctness grounding where gold citations exist.
 - [ ] LongBench multi-document QA, TriviaQA/NQ single-hop (E9 breadth).
-- [ ] More queries (>30) to tighten the paired statistics — **3B configs now n=200 ✅; 7B still ~30**.
+- [x] More queries — **all 4 configs now n=200**. Statistical power flipped the central claims (3B/Q4
+  compression significantly helps, p≤0.02; 7B/Q4 significantly hurts, p=0.019).
 - [ ] Paper-ready "Preliminary Results" section from `results_v2/`.
 
 **Completed in the latest batch:**

@@ -6,8 +6,8 @@ proposal's empirical backbone directly on this machine (Ollama / llama.cpp, CPU)
 the `TPOT(L)`/`prefill(L)` curves, the **break-even context length `L*`**, the
 quality–latency–grounding Pareto, and a training-free CPU-aware evidence selector.
 
-> **Status:** ✅ v2 complete — **8,742 runs** across 4 model×quant configs and 2 datasets
-> (3B configs scaled to **n=200**), **41 figures** + report in `results_v2/`. The Phase-0 pilot is
+> **Status:** ✅ v2 complete — **12,660 runs** across 4 model×quant configs and 2 datasets
+> (**all at n=200**), **41 figures** + report in `results_v2/`. The Phase-0 pilot is
 > preserved in `results/` (historical). See `STATUS.md` for full progress.
 
 ## At a glance
@@ -19,7 +19,7 @@ quality–latency–grounding Pareto, and a training-free CPU-aware evidence sel
 | Scorer | cross-encoder `BAAI/bge-reranker-base` (CPU) |
 | Compressors / baselines | DECAF (λ sweep), fixed-ratio, relevance top-m, **LLMLingua-2**, BM25-scorer variant |
 | Retrieval | BM25 · dense (`BAAI/bge-small-en-v1.5`) · hybrid (RRF) |
-| Runs | scaling 56 · crossover 60 · compression 7,842 · retrieval 720 · H5 64 = **8,742** |
+| Runs | scaling 56 · crossover 60 · compression 11,760 · retrieval 720 · H5 64 = **12,660** |
 | Outputs | `results_v2/` — 41 figures, `FULL_RESULTS_v2.md`, `summary_v2.json` |
 
 ## Headline results
@@ -42,17 +42,17 @@ quality–latency–grounding Pareto, and a training-free CPU-aware evidence sel
   7B/Q4 HotpotQA F1 0.522 → **0.589**, gold-in-ev 0.633 → **0.733**.
 - **H5 (secondary):** llama.cpp prefix/KV-cache reuse cuts TTFT by **~99%** on an identical
   prompt — a *large* end-to-end win precisely because prefill dominates.
-- **Statistical power (scale-up to n=200, 3B configs):** with 200 queries the 3B/Q4 compression gains
-  become **significant after Holm** (DECAF λ6 ΔF1 +0.077, p=0.009; fixed-50% +0.073, p=0.005),
-  where n=30 showed nothing. The 7B configs remain ~n=30.
+- **Statistical power (all configs at n=200):** this flips the central claims — on **3B/Q4 compression
+  significantly helps** (DECAF λ6 ΔF1 +0.077, p=0.009; fixed-50% +0.073, p=0.005), while on **7B/Q4 it
+  significantly hurts** (DECAF λ6 −0.092, p=0.019). A **significant model-size interaction** that n=30
+  could not resolve.
 - **Generation length:** extending the N_out sweep to 512 shows the decode share **plateaus** rather than
   rising, because the model hits **EOS at ~40–64 tokens** — so "prefill dominates" holds for *natural*
   answer lengths (testing longer needs EOS-disabled decoding).
 - **LLMLingua-2** costs more to run than the cross-encoder and its S_net trails DECAF's.
 
 Absolute latencies are machine-specific; the **shapes** (prefill-dominated, grounding cost,
-overhead-vs-savings) are the point. 30 questions per dataset, except the 3B configs which are scaled
-to **200**.
+overhead-vs-savings) are the point. 200 questions per dataset.
 
 ## Design
 
