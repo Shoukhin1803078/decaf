@@ -295,6 +295,7 @@ def main() -> None:
     ap.add_argument("--datasets", default=None, help="comma-separated dataset tags")
     ap.add_argument("--limit", type=int, default=None, help="override n_questions")
     ap.add_argument("--lengths", default=None, help="comma-separated scaling lengths")
+    ap.add_argument("--methods", default=None, help="comma-separated compression methods override")
     args = ap.parse_args()
 
     cfg = load_config(args.config)
@@ -304,6 +305,8 @@ def main() -> None:
                 v["n_questions"] = args.limit
     if args.lengths:
         cfg["scaling"]["lengths"] = [int(x) for x in args.lengths.split(",")]
+    if args.methods:
+        cfg["compression"]["methods"] = [m for m in args.methods.split(",")]
 
     models = cfg["models"]
     if args.models:

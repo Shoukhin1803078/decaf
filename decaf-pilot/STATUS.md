@@ -3,9 +3,9 @@
 **Date:** 2026-10-12
 **Scope:** Phase 1 (v2) — **full experiments** for the DECAF proposal
 (*"When Does Context Compression Accelerate CPU RAG? A Decode-Centric Study"*).
-**State:** ✅ Complete, reproducible end-to-end. 4,476 runs across 4 model×quant configs
-(3B/7B × Q4_K_M/Q8_0) × 2 datasets; 41 figures + report in `results_v2/`.
-The Phase-0 pilot is preserved (§3) and superseded.
+**State:** ✅ Complete, reproducible end-to-end. 8,742 runs across 4 model×quant configs
+(3B/7B × Q4_K_M/Q8_0) × 2 datasets (3B configs scaled to **n=200**); 41 figures + report in
+`results_v2/`. The Phase-0 pilot is preserved (§3) and superseded.
 
 Location: `decaf-pilot/`
 
@@ -20,10 +20,10 @@ Location: `decaf-pilot/`
 | Scorer | BM25 (~1.4 ms) | cross-encoder `bge-reranker-base` (~960 ms) |
 | Baselines | fixed ratio, relevance | + **LLMLingua-2** |
 | Long context | — | up to **16K** tokens |
-| Generation sweep | — | N_out ∈ {16, 64, 128} (crossover) |
+| Generation sweep | — | N_out ∈ {16, 64, 128, 256, 512} (crossover) |
 | Secondary (H5) | — | prefix/KV reuse + prefetch |
 | Statistics | — | bootstrap CI · McNemar · Holm |
-| Runs | 220 | **4,476** |
+| Runs | 220 | **8,742** |
 | Deliverables | `results/` | `results_v2/` (41 figures, `FULL_RESULTS_v2.md`) |
 
 ---
@@ -38,11 +38,11 @@ study and an H5 micro-study. All runs are cached (resumable, append-only JSONL);
 | Family | Runs | Description |
 |---|---:|---|
 | Scaling (E1/E8) | 56 | TPOT(L)/prefill(L) at L ∈ {256 … 16384}, 2 reps × 4 configs |
-| Crossover (H1) | 36 | decode share vs N_out ∈ {16,64,128} at L ∈ {512,2048,8192} × 4 configs |
-| Compression (E2–E7, E9) | 3,600 | 4 configs × 2 datasets × 30 q × 15 methods |
+| Crossover (H1) | 60 | decode share vs N_out ∈ {16,64,128,256,512} at L ∈ {512,2048,8192} × 4 configs |
+| Compression (E2–E7, E9) | 7,842 | 4 configs × 2 datasets × n (30; 3B = 200) × methods |
 | Retrieval modes (§13) | 720 | BM25 vs dense vs hybrid, 2 models × 2 datasets × 3 methods |
 | H5 secondary | 64 | cold/warm/partial TTFT prefix-cache study × 4 configs × 2 lengths |
-| **Total** | **4,476** | 3B/7B × Q4_K_M/Q8_0 |
+| **Total** | **8,742** | 3B/7B × Q4_K_M/Q8_0 |
 
 **New code (all additive, `*_v2`):**
 
@@ -109,6 +109,13 @@ longer trivial: compression is a net latency loss below it, a net win above.
 - **§13 — retrieval modes:** **hybrid (BM25 + dense RRF) beats BM25 on both quality and grounding** in
   most cells — 7B/Q4 HotpotQA F1 0.522 → 0.587 (dense) → **0.589 (hybrid)**, gold-in-ev 0.633 → 0.700 →
   0.733; 2Wiki 7B/Q4 0.274 → 0.315. Retrieval quality moves grounding more than compression does.
+- **Scale-up to n=200 (3B configs) — power flips the central claim:** 3B/Q4 compression gains become
+  **significant after Holm** (DECAF λ6 ΔF1 +0.077, p=0.009; fixed-50% +0.073, p=0.005; fixed-20%
+  +0.095, p=0.001), where n=30 showed nothing. The 7B configs remain ~n=30.
+- **Generation-length robustness:** extending N_out to 512 shows the decode share **plateaus** (~0.40 at
+  short context) instead of rising — because the model hits **EOS at ~40–64 tokens**, so N_out cannot be
+  forced higher. The prefill-dominated result therefore holds for *natural* answer lengths; testing true
+  long-generation needs EOS-disabled decoding (a follow-up).
 
 **Baseline — LLMLingua-2.** Its own compressor cost (~1.0–2.5 s) exceeds the cross-encoder's, so its
 S_net (≈1.0–1.8×) trails DECAF's (≈1.5–4.5×), and DECAF keeps more gold evidence at aggressive ratios.
@@ -156,7 +163,7 @@ are not significant after correction — reported honestly, with the Pareto fron
 - [ ] Energy / RAPL-style telemetry (not exposed on this macOS box) and achieved-bandwidth vs roofline.
 - [ ] Citation-correctness grounding where gold citations exist.
 - [ ] LongBench multi-document QA, TriviaQA/NQ single-hop (E9 breadth).
-- [ ] More queries (>30) to tighten the paired statistics.
+- [ ] More queries (>30) to tighten the paired statistics — **3B configs now n=200 ✅; 7B still ~30**.
 - [ ] Paper-ready "Preliminary Results" section from `results_v2/`.
 
 **Completed in the latest batch:**

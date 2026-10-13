@@ -21,9 +21,9 @@ LLMs running **entirely on CPU**.
 
 ## Status
 
-✅ **Full v2 experiments complete** — 4,476 runs: 3B/7B × Q4_K_M/Q8_0, HotpotQA +
-2WikiMultihopQA, cross-encoder scorer (`bge-reranker-base`), LLMLingua-2 baseline,
-BM25/dense/hybrid retrieval, scaling to 16K, and a KV-reuse/prefetch micro-study.
+✅ **Full v2 experiments complete** — 8,742 runs: 3B/7B × Q4_K_M/Q8_0, HotpotQA +
+2WikiMultihopQA (3B configs at **n=200**), cross-encoder scorer (`bge-reranker-base`), LLMLingua-2
+baseline, BM25/dense/hybrid retrieval, scaling to 16K, and a KV-reuse/prefetch micro-study.
 
 See `decaf-pilot/STATUS.md` for the full status and
 `decaf-pilot/results_v2/FULL_RESULTS_v2.md` for the results.

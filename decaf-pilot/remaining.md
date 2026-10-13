@@ -23,7 +23,7 @@ Ordered roughly by priority (highest first). "Est. runs" is a data-volume guide,
 |---:|---|---|---|---|---:|---|
 | 1 | E9 | **LongBench** multi-document QA | generalization | HF dataset + loader | 4 cfgs × ~200 q × ~5 methods ≈ 4,000 | high |
 | 2 | E9 | **TriviaQA / NQ** single-hop | generalization | HF dataset + loader | 4 cfgs × ~200 q × ~5 methods ≈ 4,000 | high |
-| 3 | E2/§17 | **More queries** (>30 → 100–200 / dataset) | statistics power | re-run main compression | 4 cfgs × 2 ds × 200 q × 15 methods ≈ 24,000 | high |
+| 3 | E2/§17 | **More queries** — **3B configs now n=200 ✅**; 7B still ~30 → extend to n=200 | statistics power | run 7B at n=200 | 2 cfgs × 2 ds × ~170 q × ~6 core methods ≈ 4,000 | high (partial) |
 | 4 | base | **Perception Compressor** baseline | external baseline | research code (install/adapt) | 4 cfgs × 2 ds × 30 q × 1–2 rates ≈ 240 | medium |
 | 5 | E1 | **Compressed-context `TPOT(L)` curve** (full vs compressed) | scaling | new Phase-A mode | ~60 | medium |
 | 6 | §17 | **CPU-cost-term on/off** (explicit) | ablation | new method variant (rel_iso is a proxy) | 4 cfgs × 2 ds × 30 q ≈ 240 | medium |
@@ -35,8 +35,10 @@ Ordered roughly by priority (highest first). "Est. runs" is a data-volume guide,
 1. **LongBench / TriviaQA (E9).** 2Wiki is the only generalization set so far. A long-context
    multi-doc set also stresses the `L*`/context-length story directly. Needs a dataset loader
    (same pattern as `src/data_v2.py`).
-2. **More queries.** n=30 gives only weak power — most method deltas are non-significant after
-   Holm. This is the single biggest lever on the statistics; it is also the most expensive.
+2. **More queries.** *Partly done:* the two **3B configs are now at n=200** (HotpotQA + 2Wiki,
+   core methods), and this already flipped the 3B/Q4 compression gains to **significant after Holm**
+   (DECAF λ6 ΔF1 +0.077, p=0.009; fixed-50% +0.073, p=0.005; fixed-20% +0.095, p=0.001). The **7B
+   configs are still ~n=30** — extending them to n=200 is the remaining half (and the most expensive).
 3. **Compressed-context curve.** Partly derivable from the existing full-context curve evaluated
    at the retained length `L_c` (TPOT depends on actual tokens), but the proposal asks for it
    *measured*. Cheap to add as a `--mode scaling_compressed`.

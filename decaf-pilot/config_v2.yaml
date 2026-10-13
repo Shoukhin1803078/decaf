@@ -6,13 +6,13 @@ data:
     hf_name: hotpotqa/hotpot_qa
     hf_config: distractor
     split: validation
-    n_questions: 30
+    n_questions: 200
   twowiki:
     tag: twowiki
     hf_name: framolfese/2WikiMultihopQA
     hf_config: null
     split: validation
-    n_questions: 30
+    n_questions: 200
   cache_dir: data_v2
 
 retriever: bm25
@@ -46,7 +46,7 @@ scaling:
 # H1: generation-length crossover sweep (find where decode vs prefill cross)
 crossover:
   lengths: [512, 2048, 8192]
-  num_predict: [16, 64, 128]
+  num_predict: [16, 64, 128, 256, 512]
   replicates: 1
   question: "Describe in detail how a bicycle works, listing its main parts and what each does."
 
