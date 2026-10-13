@@ -18,6 +18,23 @@ Ordered roughly by priority (highest first). "Est. runs" is a data-volume guide,
 
 ---
 
+## Start here (resume tomorrow)
+
+**Top item — finish TriviaQA for the 7B configs.** Resumable: only the not-yet-cached runs execute.
+
+```bash
+cd decaf-pilot
+.venv/bin/python -m src.run_v2 --config config_v2.yaml --mode compression \
+  --datasets trivia --methods "full,fixed_0.5,fixed_0.2,rel_iso,decaf_lam6,decaf_nocov_lam6" \
+  && .venv/bin/python -m src.analyze_v2 --config config_v2.yaml
+```
+
+Tips: run it with `run_in_background` and monitor; it survived one interruption already and picks up
+from `cache_v2/compression.jsonl`. To bound runtime, drop the slowest config by adding
+`--models qwen2.5:7b-instruct-q4_K_M` (7B/Q4 only).
+
+---
+
 ## A. Feasible now (7)
 
 | # | ID | Experiment | Category | Needs | Est. runs | Priority |
