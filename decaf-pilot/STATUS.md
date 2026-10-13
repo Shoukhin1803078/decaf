@@ -137,6 +137,12 @@ are not significant after correction — reported honestly, with the Pareto fron
 - `FULL_RESULTS_v2.md` — 9 sections (0 headline · 1 scaling · 2 break-even · 3 compression ·
   4 λ/ablation · 5 statistics · 6 H5 · 7 retrieval · 8 figure index).
 - `summary_v2.json` — all fitted curves, per-method stats, break-even, H5, retrieval, paired tests.
+- `PAPER_RESULTS.md` — paper-ready **Results** (10 sections, tables + figure refs).
+- `PAPER_METHODS.md` — paper-ready **Methods** (harness, DECAF algorithm, measurement framework, statistics, reproducibility).
+- `PAPER_INTRO_RELATED.md` — paper-ready **Introduction + Related Work + positioning**.
+- `PAPER_DISCUSSION.md` — paper-ready **Discussion + Conclusion** (incl. practical guidance).
+- `PAPER_ABSTRACT.md` — **title, abstract, keywords, highlights**.
+- `CITATION_CHECKLIST.md` — claim→source map + bibliography skeleton (fill verified metadata).
 - **41 figures**: scaling (TPOT/prefill/TTFT/E2E/decode-share/RSS/panel), crossover,
   break-even curves + L* bar + overhead-vs-savings, Pareto (F1×E2E, ×TTFT, ×retained, frontier),
   TTFT-vs-TPOT, grounding, λ-sweep, ablation, E2 ratio grid, §17 scorer ablation, retrieval modes,

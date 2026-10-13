@@ -56,7 +56,7 @@ Ordered roughly by priority (highest first). "Est. runs" is a data-volume guide,
 
 | # | Task | Notes |
 |---:|---|---|
-| 10 | **Paper-ready "Preliminary Results" section** | assemble from `results_v2/FULL_RESULTS_V2.md`, `summary_v2.json`, the 41 figures, `STATUS.md` |
+| ~~10~~ | **Paper-ready "Preliminary Results" section** | ✅ **drafted** → `results_v2/PAPER_RESULTS.md` (10 sections). Remaining: intro/related-work/venue-specific framing. |
 
 ---
 
