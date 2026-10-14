@@ -3,8 +3,8 @@
 **Date:** 2026-10-12
 **Scope:** Phase 1 (v2) — **full experiments** for the DECAF proposal
 (*"When Does Context Compression Accelerate CPU RAG? A Decode-Centric Study"*).
-**State:** ✅ Complete, reproducible end-to-end. 15,236 runs across 4 model×quant configs
-(3B/7B × Q4_K_M/Q8_0) × **3 datasets** (HotpotQA, 2Wiki, TriviaQA), 3B at n=200; 41 figures +
+**State:** ✅ Complete, reproducible end-to-end. 17,460 runs across 4 model×quant configs
+(3B/7B × Q4_K_M/Q8_0) × **3 datasets** (HotpotQA, 2Wiki, TriviaQA), all at n=200; 41 figures +
 report in `results_v2/`. The Phase-0 pilot is preserved (§3) and superseded.
 
 Location: `decaf-pilot/`
@@ -23,7 +23,7 @@ Location: `decaf-pilot/`
 | Generation sweep | — | N_out ∈ {16, 64, 128, 256, 512} (crossover) |
 | Secondary (H5) | — | prefix/KV reuse + prefetch |
 | Statistics | — | bootstrap CI · McNemar · Holm |
-| Runs | 220 | **15,236** |
+| Runs | 220 | **17,460** |
 | Deliverables | `results/` | `results_v2/` (41 figures, `FULL_RESULTS_v2.md`) |
 
 ---
@@ -39,10 +39,10 @@ study and an H5 micro-study. All runs are cached (resumable, append-only JSONL);
 |---|---:|---|
 | Scaling (E1/E8) | 56 | TPOT(L)/prefill(L) at L ∈ {256 … 16384}, 2 reps × 4 configs |
 | Crossover (H1) | 60 | decode share vs N_out ∈ {16,64,128,256,512} at L ∈ {512,2048,8192} × 4 configs |
-| Compression (E2–E7, E9) | 14,336 | 4 configs × datasets (HotpotQA/2Wiki n=200; TriviaQA 3B n=200, 7B partial) × methods |
+| Compression (E2–E7, E9) | 16,560 | 4 configs × 3 datasets × 200 q × methods (+ n=30 extras) |
 | Retrieval modes (§13) | 720 | BM25 vs dense vs hybrid, 2 models × 2 datasets × 3 methods |
 | H5 secondary | 64 | cold/warm/partial TTFT prefix-cache study × 4 configs × 2 lengths |
-| **Total** | **15,236** | 3B/7B × Q4_K_M/Q8_0 |
+| **Total** | **17,460** | 3B/7B × Q4_K_M/Q8_0 |
 
 **New code (all additive, `*_v2`):**
 
@@ -114,9 +114,11 @@ longer trivial: compression is a net latency loss below it, a net win above.
     fixed-20% +0.095, p=0.001) where n=30 showed nothing.
   - **7B/Q4:** compression **significantly hurts** (DECAF λ6 −0.092, p=0.019; rel_iso −0.092, p=0.056;
     no-cov −0.085, p=0.025) — a **significant model-size interaction** (E6/RQ4) that n=30 could not resolve.
-- **E9 — single-hop (TriviaQA, n=200):** compression **helps** — 3B/Q4 DECAF λ6 ΔF1 **+0.081** (Holm
-  p=0.002), fixed-20% +0.078 (p=0.002); directionally +0.087 for 7B/Q4 (n≈29). So the "compression
-  hurts the 7B" effect is **multi-hop-specific, not universal** — the size interaction is *dataset-dependent*.
+- **E9 — single-hop (TriviaQA, n=200, all 4 configs):** compression **helps 3B/Q4** (DECAF λ6 ΔF1
+  **+0.081**, Holm p=0.002) and is **null for the 7B** (7B/Q4 +0.001, 7B/Q8 +0.003, n.s.). So the
+  "compression hurts the 7B" effect is **multi-hop-specific**: on single-hop it is *neutral*, not
+  harmful — the size interaction is **dataset-dependent**. (At n≈29 the 7B appeared +0.087; the full
+  n=200 shows that was small-sample noise.)
 - **Generation-length robustness:** extending N_out to 512 shows the decode share **plateaus** (~0.40 at
   short context) instead of rising — because the model hits **EOS at ~40–64 tokens**, so N_out cannot be
   forced higher. The prefill-dominated result therefore holds for *natural* answer lengths; testing true
@@ -173,7 +175,7 @@ are not significant after correction — reported honestly, with the Pareto fron
 - [ ] Perception Compressor baseline (or state the compute barrier).
 - [ ] Energy / RAPL-style telemetry (not exposed on this macOS box) and achieved-bandwidth vs roofline.
 - [ ] Citation-correctness grounding where gold citations exist.
-- [x] LongBench multi-document QA, TriviaQA/NQ single-hop (E9 breadth) — **TriviaQA done** (3B n=200; 7B partial); LongBench pending.
+- [ ] LongBench multi-document QA (E9 breadth) — **TriviaQA done** (all 4 configs, n=200); LongBench pending.
 - [x] More queries — **all 4 configs now n=200**. Statistical power flipped the central claims (3B/Q4
   compression significantly helps, p≤0.02; 7B/Q4 significantly hurts, p=0.019).
 - [ ] Paper-ready "Preliminary Results" section from `results_v2/`.

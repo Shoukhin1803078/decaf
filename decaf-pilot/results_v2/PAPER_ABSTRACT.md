@@ -25,8 +25,8 @@ only above a break-even context length `L*` (228–312 tokens)** — a threshold
 *precisely because the compressor is expensive* (a cross-encoder costs ~0.9 s and roughly halves the
 net speedup). With paired statistics, compression **significantly helps** the 3B model (ΔF1 +0.077,
 Holm p = 0.009) yet **significantly hurts** the 7B model (ΔF1 −0.092, p = 0.019) on multi-hop
-HotpotQA — while on single-hop TriviaQA it **helps even the 7B**, so the size interaction is
-**dataset-dependent**. **Grounding degrades monotonically** with compression across datasets. Hybrid
+HotpotQA — while on single-hop TriviaQA it is **neutral for the 7B** (ΔF1 ≈ 0), so the size
+interaction is **dataset-dependent**. **Grounding degrades monotonically** with compression across datasets. Hybrid
 retrieval improves both quality and
 grounding and can matter more than the compression policy, quantization is second-order, and
 llama.cpp prefix/KV reuse cuts TTFT by ~99% because prefill dominates. We release the harness,
@@ -42,8 +42,8 @@ characterization; break-even analysis; quantized LLMs; grounding evaluation.
 - A **break-even context length `L*` ≈ 228–312 tokens** separates net-loss from net-win compression —
   and exists only because the compressor itself is costly.
 - **Model size decides the sign** of compression's effect (3B: significantly helps; 7B: significantly
-  hurts on multi-hop) — but the interaction is **dataset-dependent** (on single-hop TriviaQA it helps
-  both), while **quantization is second-order**.
+  hurts on multi-hop) — but the interaction is **dataset-dependent** (on single-hop it is neutral for
+  the 7B), while **quantization is second-order**.
 - Compression **improves or preserves accuracy but monotonically degrades grounding** — accuracy alone
   hides the cost.
 - **Hybrid retrieval** and **KV-cache reuse** are larger, safer wins than a cleverer compressor.

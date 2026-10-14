@@ -1,6 +1,6 @@
 # DECAF — Full Results v2
 
-CPU-only, Ollama/llama.cpp · models: 3B / Q4_K_M, 3B / Q8_0, 7B / Q4_K_M, 7B / Q8_0 · datasets: hotpot, twowiki, trivia · 56 scaling, 60 crossover, 14336 compression runs · cross-encoder scorer `BAAI/bge-reranker-base`.
+CPU-only, Ollama/llama.cpp · models: 3B / Q4_K_M, 3B / Q8_0, 7B / Q4_K_M, 7B / Q8_0 · datasets: hotpot, twowiki, trivia · 56 scaling, 60 crossover, 16560 compression runs · cross-encoder scorer `BAAI/bge-reranker-base`.
 
 > v2 supersedes the single-model pilot: quantization (E5) + model-size (E6) pairs, a cross-encoder scorer, long-context scaling to 8K, a generation-length crossover (H1), 2Wiki generalization (E9), and paired statistics (bootstrap CI, McNemar, Holm).
 
@@ -10,16 +10,16 @@ CPU-only, Ollama/llama.cpp · models: 3B / Q4_K_M, 3B / Q8_0, 7B / Q4_K_M, 7B / 
 - **3B / Q8_0**: prefill grows 5.28 ms/token (r²=0.994) while TPOT barely moves (+0.81 ms per 1k tokens). Decode = prefill at **L ≈ 916 tokens** (32-token outputs) → **prefill dominates above it (H1 refuted on this setup)**.
 - **7B / Q4_K_M**: prefill grows 10.92 ms/token (r²=0.998) while TPOT barely moves (+1.30 ms per 1k tokens). Decode = prefill at **L ≈ 584 tokens** (32-token outputs) → **prefill dominates above it (H1 refuted on this setup)**.
 - **7B / Q8_0**: prefill grows 10.57 ms/token (r²=0.996) while TPOT barely moves (+1.24 ms per 1k tokens). Decode = prefill at **L ≈ 867 tokens** (32-token outputs) → **prefill dominates above it (H1 refuted on this setup)**.
-- **Compressor cost T_compress ≈ 879 ms** (cross-encoder `bge-reranker-base`, CPU): ~3 orders of magnitude above the pilot's BM25 (~1.4 ms) and no longer negligible — this is the cost the proposal warns about.
+- **Compressor cost T_compress ≈ 893 ms** (cross-encoder `bge-reranker-base`, CPU): ~3 orders of magnitude above the pilot's BM25 (~1.4 ms) and no longer negligible — this is the cost the proposal warns about.
 - **3B / Q4_K_M**: retained L_c≈158 tok, break-even **L*≈319 tokens** (compression is a net latency loss below, a net win above).
 - **3B / Q8_0**: retained L_c≈158 tok, break-even **L*≈326 tokens** (compression is a net latency loss below, a net win above).
-- **7B / Q4_K_M**: retained L_c≈154 tok, break-even **L*≈232 tokens** (compression is a net latency loss below, a net win above).
-- **7B / Q8_0**: retained L_c≈150 tok, break-even **L*≈231 tokens** (compression is a net latency loss below, a net win above).
+- **7B / Q4_K_M**: retained L_c≈158 tok, break-even **L*≈239 tokens** (compression is a net latency loss below, a net win above).
+- **7B / Q8_0**: retained L_c≈158 tok, break-even **L*≈242 tokens** (compression is a net latency loss below, a net win above).
 - **Overhead matters**: 3B / Q4_K_M·hotpot DECAF(decaf_lam6): gross speedup 3.71× falls to **S_net 2.00×** once the 905 ms cross-encoder cost is counted (S_net = T_full / (T_compress + T_e2e)).
 - **hotpot**: best F1 = 0.584 (7B / Q4_K_M · Fixed 60%). DECAF(decaf_lam6) F1 → 7B / Q8_0:0.445, 7B / Q4_K_M:0.443, 3B / Q4_K_M:0.262, 3B / Q8_0:0.222.
-- **trivia**: best F1 = 0.596 (7B / Q4_K_M · DECAF no-cov (λ=6)). DECAF(decaf_lam6) F1 → 7B / Q4_K_M:0.594, 3B / Q4_K_M:0.312, 3B / Q8_0:0.260.
+- **trivia**: best F1 = 0.575 (7B / Q4_K_M · Fixed 50%). DECAF(decaf_lam6) F1 → 7B / Q4_K_M:0.547, 7B / Q8_0:0.545, 3B / Q4_K_M:0.312, 3B / Q8_0:0.260.
 - **twowiki**: best F1 = 0.354 (7B / Q8_0 · Fixed 60%). DECAF(decaf_lam6) F1 → 7B / Q8_0:0.240, 7B / Q4_K_M:0.228, 3B / Q4_K_M:0.187, 3B / Q8_0:0.126.
-- **vs LLMLingua-2 (external training-free baseline)**: its own T_compress (≈1685 ms) exceeds the cross-encoder's, and its S_net (≈1.13×) trails DECAF's (≈2.66×); DECAF also keeps more gold evidence at aggressive ratios.
+- **vs LLMLingua-2 (external training-free baseline)**: its own T_compress (≈1685 ms) exceeds the cross-encoder's, and its S_net (≈1.13×) trails DECAF's (≈2.94×); DECAF also keeps more gold evidence at aggressive ratios.
 - **H5 (secondary systems analysis)**: llama.cpp prefix/KV-cache reuse cuts TTFT by ~**100%** on an identical prompt and ~92–96% on a shared-context/partial overlap — far beyond the 'reuse moves only TTFT' expectation, and a large end-to-end win here precisely because prefill dominates.
 
 ## 1. Decoding scaling (E1/E8, per model)
@@ -39,8 +39,8 @@ Figures: `fig_v2_scaling_tpot.png`, `fig_v2_scaling_prefill.png`, `fig_v2_scalin
 |:------------|------------:|------------------:|--------------------------------:|-----------:|
 | 3B / Q4_K_M |         158 |             892.5 |                           5.533 |        319 |
 | 3B / Q8_0   |         158 |             892.8 |                           5.31  |        326 |
-| 7B / Q4_K_M |         154 |             854.1 |                          10.957 |        232 |
-| 7B / Q8_0   |         150 |             865   |                          10.613 |        231 |
+| 7B / Q4_K_M |         158 |             892.8 |                          10.957 |        239 |
+| 7B / Q8_0   |         158 |             892.7 |                          10.613 |        242 |
 
 Figures: `fig_v2_breakeven_curves.png`, `fig_v2_Lstar_bar.png`, `fig_v2_overhead_vs_savings.png`.
 
@@ -127,12 +127,18 @@ Figures: `fig_v2_breakeven_curves.png`, `fig_v2_Lstar_bar.png`, `fig_v2_overhead
 | 3B / Q8_0   | Fixed 50%             | 0.255 | 0.09  |    0.816 |        0.86  |      0.554 |   989.303 |  1223.59  |      4.575 |    2.529 |
 | 3B / Q8_0   | Full context          | 0.235 | 0.065 |    1     |        0.88  |      1     |   989.18  |  5597.39  |      1     |    1     |
 | 3B / Q8_0   | Relevance top-m (iso) | 0.265 | 0.1   |    0.425 |        0.7   |      0.141 |   989.353 |  1183.69  |      4.729 |    2.576 |
-| 7B / Q4_K_M | DECAF λ=6             | 0.594 | 0.517 |    0.516 |        0.828 |      0.148 |   614.465 |   901.988 |     11.877 |    7.065 |
-| 7B / Q4_K_M | DECAF no-cov (λ=6)    | 0.596 | 0.517 |    0.579 |        0.862 |      0.198 |   613.084 |  1339.46  |      7.998 |    5.487 |
-| 7B / Q4_K_M | Fixed 20%             | 0.555 | 0.483 |    0.561 |        0.862 |      0.258 |   613.219 |   794.102 |     13.491 |    7.613 |
-| 7B / Q4_K_M | Fixed 50%             | 0.57  | 0.5   |    0.848 |        0.9   |      0.565 |   627.793 |   772.669 |     13.865 |    7.65  |
-| 7B / Q4_K_M | Full context          | 0.518 | 0.4   |    1     |        0.9   |      1     |   627.887 | 10713.3   |      1     |    1     |
-| 7B / Q4_K_M | Relevance top-m (iso) | 0.553 | 0.483 |    0.499 |        0.828 |      0.207 |   613.212 |   796.256 |     13.455 |    7.601 |
+| 7B / Q4_K_M | DECAF λ=6             | 0.547 | 0.405 |    0.422 |        0.695 |      0.122 |   989.889 |   851.593 |     13.571 |    6.276 |
+| 7B / Q4_K_M | DECAF no-cov (λ=6)    | 0.564 | 0.43  |    0.483 |        0.73  |      0.168 |   989.772 |  1400.46  |      8.253 |    4.835 |
+| 7B / Q4_K_M | Fixed 20%             | 0.544 | 0.4   |    0.549 |        0.775 |      0.234 |   989.442 |   886.488 |     13.037 |    6.161 |
+| 7B / Q4_K_M | Fixed 50%             | 0.575 | 0.44  |    0.816 |        0.86  |      0.554 |   989.465 |   851.994 |     13.565 |    6.276 |
+| 7B / Q4_K_M | Full context          | 0.546 | 0.4   |    1     |        0.88  |      1     |   989.276 | 11557.4   |      1     |    1     |
+| 7B / Q4_K_M | Relevance top-m (iso) | 0.531 | 0.395 |    0.425 |        0.7   |      0.141 |   989.185 |   978.068 |     11.817 |    5.875 |
+| 7B / Q8_0   | DECAF λ=6             | 0.545 | 0.415 |    0.422 |        0.695 |      0.122 |   989.609 |  1061.71  |     11.253 |    5.824 |
+| 7B / Q8_0   | DECAF no-cov (λ=6)    | 0.575 | 0.45  |    0.483 |        0.73  |      0.168 |   990.023 |  1619.76  |      7.376 |    4.578 |
+| 7B / Q8_0   | Fixed 20%             | 0.559 | 0.42  |    0.549 |        0.775 |      0.234 |   989.271 |  1119.69  |     10.671 |    5.665 |
+| 7B / Q8_0   | Fixed 50%             | 0.561 | 0.425 |    0.816 |        0.86  |      0.554 |   989.802 |  1076.28  |     11.101 |    5.783 |
+| 7B / Q8_0   | Full context          | 0.542 | 0.405 |    1     |        0.88  |      1     |   989.197 | 11947.9   |      1     |    1     |
+| 7B / Q8_0   | Relevance top-m (iso) | 0.538 | 0.42  |    0.425 |        0.7   |      0.141 |   989.529 |  1147.97  |     10.408 |    5.59  |
 
 ### twowiki
 
@@ -219,7 +225,8 @@ Figures: `fig_v2_pareto_f1_e2e.png`, `fig_v2_pareto_f1_ttft.png`, `fig_v2_pareto
 | hotpot    | 7B / Q8_0   |  15 | 0.358 |      0.055 |        0.467 |      1887 |
 | trivia    | 3B / Q4_K_M |   6 | 0.312 |      0.122 |        0.695 |       722 |
 | trivia    | 3B / Q8_0   |   6 | 0.26  |      0.122 |        0.695 |      1117 |
-| trivia    | 7B / Q4_K_M |   6 | 0.594 |      0.148 |        0.828 |       902 |
+| trivia    | 7B / Q4_K_M |   6 | 0.547 |      0.122 |        0.695 |       852 |
+| trivia    | 7B / Q8_0   |   6 | 0.545 |      0.122 |        0.695 |      1062 |
 | twowiki   | 3B / Q4_K_M |   2 | 0.309 |      0.156 |        0.7   |      1079 |
 | twowiki   | 3B / Q4_K_M |   6 | 0.187 |      0.115 |        0.4   |       961 |
 | twowiki   | 3B / Q4_K_M |  15 | 0.251 |      0.084 |        0.4   |       984 |
@@ -259,9 +266,12 @@ Ablation (coverage / reorder / CPU-relevance-only vs full DECAF λ6):
 | trivia    | 3B / Q8_0   | DECAF λ=6              | 0.26  |    0.422 |        0.695 |      0.122 |
 | trivia    | 3B / Q8_0   | DECAF no-cov (λ=6)     | 0.289 |    0.483 |        0.73  |      0.168 |
 | trivia    | 3B / Q8_0   | Relevance top-m (iso)  | 0.265 |    0.425 |        0.7   |      0.141 |
-| trivia    | 7B / Q4_K_M | DECAF λ=6              | 0.594 |    0.516 |        0.828 |      0.148 |
-| trivia    | 7B / Q4_K_M | DECAF no-cov (λ=6)     | 0.596 |    0.579 |        0.862 |      0.198 |
-| trivia    | 7B / Q4_K_M | Relevance top-m (iso)  | 0.553 |    0.499 |        0.828 |      0.207 |
+| trivia    | 7B / Q4_K_M | DECAF λ=6              | 0.547 |    0.422 |        0.695 |      0.122 |
+| trivia    | 7B / Q4_K_M | DECAF no-cov (λ=6)     | 0.564 |    0.483 |        0.73  |      0.168 |
+| trivia    | 7B / Q4_K_M | Relevance top-m (iso)  | 0.531 |    0.425 |        0.7   |      0.141 |
+| trivia    | 7B / Q8_0   | DECAF λ=6              | 0.545 |    0.422 |        0.695 |      0.122 |
+| trivia    | 7B / Q8_0   | DECAF no-cov (λ=6)     | 0.575 |    0.483 |        0.73  |      0.168 |
+| trivia    | 7B / Q8_0   | Relevance top-m (iso)  | 0.538 |    0.425 |        0.7   |      0.141 |
 | twowiki   | 3B / Q4_K_M | DECAF λ=6              | 0.187 |    0.349 |        0.4   |      0.115 |
 | twowiki   | 3B / Q4_K_M | DECAF no-cov (λ=6)     | 0.198 |    0.399 |        0.47  |      0.161 |
 | twowiki   | 3B / Q4_K_M | DECAF no-reorder (λ=6) | 0.299 |    0.458 |        0.533 |      0.102 |
@@ -407,11 +417,11 @@ Figures: `fig_v2_lambda_sweep.png`, `fig_v2_ablation_bars.png`, `fig_v2_ratio_gr
 | 7B / Q4_K_M|hotpot  | DECAF λ=2               |        -0.082 | [-0.231, 0.047]  |       0.375 |    1     |
 | 7B / Q4_K_M|hotpot  | DECAF λ=6               |        -0.092 | [-0.151, -0.037] |       0.001 |    0.019 |
 | 7B / Q4_K_M|hotpot  | DECAF λ=15              |        -0.261 | [-0.451, -0.073] |       0.039 |    0.352 |
-| 7B / Q4_K_M|trivia  | Fixed 50%               |         0.052 | [-0.045, 0.153]  |       0.375 |    1     |
-| 7B / Q4_K_M|trivia  | Fixed 20%               |         0.048 | [-0.049, 0.138]  |       0.625 |    1     |
-| 7B / Q4_K_M|trivia  | Relevance top-m (iso)   |         0.047 | [-0.058, 0.154]  |       0.625 |    1     |
-| 7B / Q4_K_M|trivia  | DECAF no-cov (λ=6)      |         0.09  | [-0.018, 0.206]  |       0.375 |    1     |
-| 7B / Q4_K_M|trivia  | DECAF λ=6               |         0.087 | [-0.025, 0.205]  |       0.375 |    1     |
+| 7B / Q4_K_M|trivia  | Fixed 50%               |         0.029 | [-0.002, 0.064]  |       0.096 |    0.481 |
+| 7B / Q4_K_M|trivia  | Fixed 20%               |        -0.002 | [-0.041, 0.040]  |       1     |    1     |
+| 7B / Q4_K_M|trivia  | Relevance top-m (iso)   |        -0.015 | [-0.063, 0.036]  |       1     |    1     |
+| 7B / Q4_K_M|trivia  | DECAF no-cov (λ=6)      |         0.018 | [-0.027, 0.062]  |       0.345 |    1     |
+| 7B / Q4_K_M|trivia  | DECAF λ=6               |         0.001 | [-0.051, 0.054]  |       1     |    1     |
 | 7B / Q4_K_M|twowiki | Fixed 80%               |         0.03  | [-0.048, 0.113]  |       1     |    1     |
 | 7B / Q4_K_M|twowiki | Fixed 60%               |         0.011 | [-0.099, 0.120]  |       1     |    1     |
 | 7B / Q4_K_M|twowiki | Fixed 50%               |         0.012 | [-0.023, 0.044]  |       1     |    1     |
@@ -440,6 +450,11 @@ Figures: `fig_v2_lambda_sweep.png`, `fig_v2_ablation_bars.png`, `fig_v2_ratio_gr
 | 7B / Q8_0|hotpot    | DECAF λ=2               |        -0.064 | [-0.186, 0.060]  |       0.375 |    1     |
 | 7B / Q8_0|hotpot    | DECAF λ=6               |        -0.064 | [-0.118, -0.014] |       0.004 |    0.051 |
 | 7B / Q8_0|hotpot    | DECAF λ=15              |        -0.253 | [-0.410, -0.105] |       0.008 |    0.094 |
+| 7B / Q8_0|trivia    | Fixed 50%               |         0.019 | [-0.014, 0.057]  |       0.481 |    1     |
+| 7B / Q8_0|trivia    | Fixed 20%               |         0.017 | [-0.023, 0.057]  |       0.664 |    1     |
+| 7B / Q8_0|trivia    | Relevance top-m (iso)   |        -0.003 | [-0.048, 0.042]  |       0.72  |    1     |
+| 7B / Q8_0|trivia    | DECAF no-cov (λ=6)      |         0.033 | [-0.008, 0.076]  |       0.108 |    0.539 |
+| 7B / Q8_0|trivia    | DECAF λ=6               |         0.003 | [-0.045, 0.053]  |       0.868 |    1     |
 | 7B / Q8_0|twowiki   | Fixed 80%               |        -0.002 | [-0.080, 0.054]  |       1     |    1     |
 | 7B / Q8_0|twowiki   | Fixed 60%               |         0.062 | [-0.046, 0.186]  |       1     |    1     |
 | 7B / Q8_0|twowiki   | Fixed 50%               |         0.025 | [-0.013, 0.063]  |       0.383 |    1     |

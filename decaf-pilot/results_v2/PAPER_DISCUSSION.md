@@ -39,9 +39,10 @@ Holm p = 0.009; fixed-20% +0.095, p = 0.001), while on the **7B** model it **hur
 p = 0.019). The mechanism is intuitive: a small model is degraded by long distractor context, whereas a
 larger model can exploit it. This interaction was **invisible at n = 30** and is exactly the kind of
 conclusion that requires adequate statistical power. Crucially, it is **dataset-dependent**: on
-single-hop TriviaQA the sign reverses and compression **helps even the 7B** (+0.087, n≈29), because
-single-hop provided contexts are dominated by distractor passages. The finding is therefore about the
-*interaction of model size with task/context structure*, not model size alone. It reframes the
+single-hop TriviaQA compression is **neutral for the 7B** (ΔF1 ≈ 0, n = 200) rather than harmful,
+because single-hop provided contexts lack the long distractor structure that the larger model can
+exploit. The finding is therefore about the *interaction of model size with task/context structure*,
+not model size alone. It reframes the
 deployment question from "should I compress?" to "**for which model, task and context length** should
 I compress?".
 
