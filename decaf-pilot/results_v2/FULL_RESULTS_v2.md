@@ -1,6 +1,6 @@
 # DECAF — Full Results v2
 
-CPU-only, Ollama/llama.cpp · models: 3B / Q4_K_M, 3B / Q8_0, 7B / Q4_K_M, 7B / Q8_0 · datasets: hotpot, twowiki, trivia · 56 scaling, 60 crossover, 16560 compression runs · cross-encoder scorer `BAAI/bge-reranker-base`.
+CPU-only, Ollama/llama.cpp · models: 3B / Q4_K_M, 3B / Q8_0, 7B / Q4_K_M, 7B / Q8_0 · datasets: hotpot, twowiki, trivia, longbench · 56 scaling, 60 crossover, 19080 compression runs · cross-encoder scorer `BAAI/bge-reranker-base`.
 
 > v2 supersedes the single-model pilot: quantization (E5) + model-size (E6) pairs, a cross-encoder scorer, long-context scaling to 8K, a generation-length crossover (H1), 2Wiki generalization (E9), and paired statistics (bootstrap CI, McNemar, Holm).
 
@@ -10,16 +10,17 @@ CPU-only, Ollama/llama.cpp · models: 3B / Q4_K_M, 3B / Q8_0, 7B / Q4_K_M, 7B / 
 - **3B / Q8_0**: prefill grows 5.28 ms/token (r²=0.994) while TPOT barely moves (+0.81 ms per 1k tokens). Decode = prefill at **L ≈ 916 tokens** (32-token outputs) → **prefill dominates above it (H1 refuted on this setup)**.
 - **7B / Q4_K_M**: prefill grows 10.92 ms/token (r²=0.998) while TPOT barely moves (+1.30 ms per 1k tokens). Decode = prefill at **L ≈ 584 tokens** (32-token outputs) → **prefill dominates above it (H1 refuted on this setup)**.
 - **7B / Q8_0**: prefill grows 10.57 ms/token (r²=0.996) while TPOT barely moves (+1.24 ms per 1k tokens). Decode = prefill at **L ≈ 867 tokens** (32-token outputs) → **prefill dominates above it (H1 refuted on this setup)**.
-- **Compressor cost T_compress ≈ 893 ms** (cross-encoder `bge-reranker-base`, CPU): ~3 orders of magnitude above the pilot's BM25 (~1.4 ms) and no longer negligible — this is the cost the proposal warns about.
-- **3B / Q4_K_M**: retained L_c≈158 tok, break-even **L*≈319 tokens** (compression is a net latency loss below, a net win above).
-- **3B / Q8_0**: retained L_c≈158 tok, break-even **L*≈326 tokens** (compression is a net latency loss below, a net win above).
-- **7B / Q4_K_M**: retained L_c≈158 tok, break-even **L*≈239 tokens** (compression is a net latency loss below, a net win above).
+- **Compressor cost T_compress ≈ 940 ms** (cross-encoder `bge-reranker-base`, CPU): ~3 orders of magnitude above the pilot's BM25 (~1.4 ms) and no longer negligible — this is the cost the proposal warns about.
+- **3B / Q4_K_M**: retained L_c≈164 tok, break-even **L*≈342 tokens** (compression is a net latency loss below, a net win above).
+- **3B / Q8_0**: retained L_c≈164 tok, break-even **L*≈349 tokens** (compression is a net latency loss below, a net win above).
+- **7B / Q4_K_M**: retained L_c≈159 tok, break-even **L*≈241 tokens** (compression is a net latency loss below, a net win above).
 - **7B / Q8_0**: retained L_c≈158 tok, break-even **L*≈242 tokens** (compression is a net latency loss below, a net win above).
 - **Overhead matters**: 3B / Q4_K_M·hotpot DECAF(decaf_lam6): gross speedup 3.71× falls to **S_net 2.00×** once the 905 ms cross-encoder cost is counted (S_net = T_full / (T_compress + T_e2e)).
 - **hotpot**: best F1 = 0.584 (7B / Q4_K_M · Fixed 60%). DECAF(decaf_lam6) F1 → 7B / Q8_0:0.445, 7B / Q4_K_M:0.443, 3B / Q4_K_M:0.262, 3B / Q8_0:0.222.
+- **longbench**: best F1 = 0.464 (7B / Q4_K_M · Fixed 20%). DECAF(decaf_lam6) F1 → 7B / Q4_K_M:0.386, 3B / Q4_K_M:0.156, 3B / Q8_0:0.129.
 - **trivia**: best F1 = 0.575 (7B / Q4_K_M · Fixed 50%). DECAF(decaf_lam6) F1 → 7B / Q4_K_M:0.547, 7B / Q8_0:0.545, 3B / Q4_K_M:0.312, 3B / Q8_0:0.260.
 - **twowiki**: best F1 = 0.354 (7B / Q8_0 · Fixed 60%). DECAF(decaf_lam6) F1 → 7B / Q8_0:0.240, 7B / Q4_K_M:0.228, 3B / Q4_K_M:0.187, 3B / Q8_0:0.126.
-- **vs LLMLingua-2 (external training-free baseline)**: its own T_compress (≈1685 ms) exceeds the cross-encoder's, and its S_net (≈1.13×) trails DECAF's (≈2.94×); DECAF also keeps more gold evidence at aggressive ratios.
+- **vs LLMLingua-2 (external training-free baseline)**: its own T_compress (≈1685 ms) exceeds the cross-encoder's, and its S_net (≈1.13×) trails DECAF's (≈2.66×); DECAF also keeps more gold evidence at aggressive ratios.
 - **H5 (secondary systems analysis)**: llama.cpp prefix/KV-cache reuse cuts TTFT by ~**100%** on an identical prompt and ~92–96% on a shared-context/partial overlap — far beyond the 'reuse moves only TTFT' expectation, and a large end-to-end win here precisely because prefill dominates.
 
 ## 1. Decoding scaling (E1/E8, per model)
@@ -37,9 +38,9 @@ Figures: `fig_v2_scaling_tpot.png`, `fig_v2_scaling_prefill.png`, `fig_v2_scalin
 
 | model       |   L_c (tok) |   T_compress (ms) |   prefill+decode slope (ms/tok) |   L* (tok) |
 |:------------|------------:|------------------:|--------------------------------:|-----------:|
-| 3B / Q4_K_M |         158 |             892.5 |                           5.533 |        319 |
-| 3B / Q8_0   |         158 |             892.8 |                           5.31  |        326 |
-| 7B / Q4_K_M |         158 |             892.8 |                          10.957 |        239 |
+| 3B / Q4_K_M |         164 |             981.5 |                           5.533 |        342 |
+| 3B / Q8_0   |         164 |             981.4 |                           5.31  |        349 |
+| 7B / Q4_K_M |         159 |             898.7 |                          10.957 |        241 |
 | 7B / Q8_0   |         158 |             892.7 |                          10.613 |        242 |
 
 Figures: `fig_v2_breakeven_curves.png`, `fig_v2_Lstar_bar.png`, `fig_v2_overhead_vs_savings.png`.
@@ -110,6 +111,29 @@ Figures: `fig_v2_breakeven_curves.png`, `fig_v2_Lstar_bar.png`, `fig_v2_overhead
 | 7B / Q8_0   | LLMLingua-2 (20%)       | 0.232 | 0.167 |  nan     |        0.433 |      0.206 |  4249.33  |  2541.59  |      3.209 |    1.201 |
 | 7B / Q8_0   | LLMLingua-2 (50%)       | 0.542 | 0.433 |  nan     |        0.7   |      0.499 |  4382.64  |  4742.77  |      1.72  |    0.894 |
 | 7B / Q8_0   | Relevance top-m (iso)   | 0.446 | 0.31  |    0.47  |        0.53  |      0.128 |   905.036 |  1606.49  |      5.077 |    3.248 |
+
+### longbench
+
+| model       | method                |    F1 |    EM |   ev.rec |   gold-in-ev |   retained |   T_c(ms) |   E2E(ms) |   speedup× |   S_net× |
+|:------------|:----------------------|------:|------:|---------:|-------------:|-----------:|----------:|----------:|-----------:|---------:|
+| 3B / Q4_K_M | DECAF λ=6             | 0.156 | 0.05  |    0.143 |        0.38  |      0.097 |   1343.7  |  1183.24  |      4.157 |    1.946 |
+| 3B / Q4_K_M | DECAF no-cov (λ=6)    | 0.183 | 0.07  |    0.167 |        0.43  |      0.137 |   1343.84 |  1230.62  |      3.997 |    1.91  |
+| 3B / Q4_K_M | Fixed 20%             | 0.175 | 0.055 |    0.213 |        0.52  |      0.262 |   1343.51 |  1272.05  |      3.867 |    1.88  |
+| 3B / Q4_K_M | Fixed 50%             | 0.166 | 0.055 |    0.284 |        0.605 |      0.583 |   1343.86 |  1358.24  |      3.621 |    1.82  |
+| 3B / Q4_K_M | Full context          | 0.302 | 0.205 |    0.321 |        0.64  |      1     |   1343.4  |  4918.42  |      1     |    1     |
+| 3B / Q4_K_M | Relevance top-m (iso) | 0.16  | 0.05  |    0.151 |        0.395 |      0.115 |   1343.54 |  1286.18  |      3.824 |    1.87  |
+| 3B / Q8_0   | DECAF λ=6             | 0.129 | 0.02  |    0.143 |        0.38  |      0.097 |   1343.81 |  2036.72  |      2.728 |    1.644 |
+| 3B / Q8_0   | DECAF no-cov (λ=6)    | 0.141 | 0.04  |    0.167 |        0.43  |      0.137 |   1343.66 |  2074.69  |      2.678 |    1.626 |
+| 3B / Q8_0   | Fixed 20%             | 0.158 | 0.055 |    0.213 |        0.52  |      0.262 |   1343.46 |  2063.68  |      2.693 |    1.631 |
+| 3B / Q8_0   | Fixed 50%             | 0.156 | 0.045 |    0.284 |        0.605 |      0.583 |   1344.22 |  2085.84  |      2.664 |    1.62  |
+| 3B / Q8_0   | Full context          | 0.303 | 0.21  |    0.321 |        0.64  |      1     |   1343.55 |  5556.57  |      1     |    1     |
+| 3B / Q8_0   | Relevance top-m (iso) | 0.128 | 0.02  |    0.151 |        0.395 |      0.115 |   1343.64 |  2132.36  |      2.606 |    1.599 |
+| 7B / Q4_K_M | DECAF λ=6             | 0.386 | 0.25  |    0.047 |        0.3   |      0.092 |   1206.79 |   744.714 |     14.852 |    5.668 |
+| 7B / Q4_K_M | DECAF no-cov (λ=6)    | 0.354 | 0.2   |    0.059 |        0.35  |      0.132 |   1206.57 |  1868.48  |      5.92  |    3.597 |
+| 7B / Q4_K_M | Fixed 20%             | 0.464 | 0.35  |    0.236 |        0.5   |      0.268 |   1206.45 |   951.204 |     11.628 |    5.126 |
+| 7B / Q4_K_M | Fixed 50%             | 0.417 | 0.25  |    0.31  |        0.6   |      0.587 |   1208.75 |   952.354 |     11.614 |    5.118 |
+| 7B / Q4_K_M | Full context          | 0.454 | 0.35  |    0.319 |        0.65  |      1     |   1206.21 | 11060.6   |      1     |    1     |
+| 7B / Q4_K_M | Relevance top-m (iso) | 0.386 | 0.25  |    0.047 |        0.3   |      0.096 |   1206.52 |   944.863 |     11.706 |    5.141 |
 
 ### trivia
 
@@ -223,6 +247,9 @@ Figures: `fig_v2_pareto_f1_e2e.png`, `fig_v2_pareto_f1_ttft.png`, `fig_v2_pareto
 | hotpot    | 7B / Q8_0   |   2 | 0.547 |      0.208 |        0.667 |      1678 |
 | hotpot    | 7B / Q8_0   |   6 | 0.445 |      0.12  |        0.515 |      1436 |
 | hotpot    | 7B / Q8_0   |  15 | 0.358 |      0.055 |        0.467 |      1887 |
+| longbench | 3B / Q4_K_M |   6 | 0.156 |      0.097 |        0.38  |      1183 |
+| longbench | 3B / Q8_0   |   6 | 0.129 |      0.097 |        0.38  |      2037 |
+| longbench | 7B / Q4_K_M |   6 | 0.386 |      0.092 |        0.3   |       745 |
 | trivia    | 3B / Q4_K_M |   6 | 0.312 |      0.122 |        0.695 |       722 |
 | trivia    | 3B / Q8_0   |   6 | 0.26  |      0.122 |        0.695 |      1117 |
 | trivia    | 7B / Q4_K_M |   6 | 0.547 |      0.122 |        0.695 |       852 |
@@ -260,6 +287,15 @@ Ablation (coverage / reorder / CPU-relevance-only vs full DECAF λ6):
 | hotpot    | 7B / Q8_0   | DECAF no-cov (λ=6)     | 0.452 |    0.505 |        0.575 |      0.166 |
 | hotpot    | 7B / Q8_0   | DECAF no-reorder (λ=6) | 0.522 |    0.572 |        0.633 |      0.128 |
 | hotpot    | 7B / Q8_0   | Relevance top-m (iso)  | 0.446 |    0.47  |        0.53  |      0.128 |
+| longbench | 3B / Q4_K_M | DECAF λ=6              | 0.156 |    0.143 |        0.38  |      0.097 |
+| longbench | 3B / Q4_K_M | DECAF no-cov (λ=6)     | 0.183 |    0.167 |        0.43  |      0.137 |
+| longbench | 3B / Q4_K_M | Relevance top-m (iso)  | 0.16  |    0.151 |        0.395 |      0.115 |
+| longbench | 3B / Q8_0   | DECAF λ=6              | 0.129 |    0.143 |        0.38  |      0.097 |
+| longbench | 3B / Q8_0   | DECAF no-cov (λ=6)     | 0.141 |    0.167 |        0.43  |      0.137 |
+| longbench | 3B / Q8_0   | Relevance top-m (iso)  | 0.128 |    0.151 |        0.395 |      0.115 |
+| longbench | 7B / Q4_K_M | DECAF λ=6              | 0.386 |    0.047 |        0.3   |      0.092 |
+| longbench | 7B / Q4_K_M | DECAF no-cov (λ=6)     | 0.354 |    0.059 |        0.35  |      0.132 |
+| longbench | 7B / Q4_K_M | Relevance top-m (iso)  | 0.386 |    0.047 |        0.3   |      0.096 |
 | trivia    | 3B / Q4_K_M | DECAF λ=6              | 0.312 |    0.422 |        0.695 |      0.122 |
 | trivia    | 3B / Q4_K_M | DECAF no-cov (λ=6)     | 0.323 |    0.483 |        0.73  |      0.168 |
 | trivia    | 3B / Q4_K_M | Relevance top-m (iso)  | 0.314 |    0.425 |        0.7   |      0.141 |
@@ -335,140 +371,155 @@ Figures: `fig_v2_lambda_sweep.png`, `fig_v2_ablation_bars.png`, `fig_v2_ratio_gr
 
 ## 5. Paired statistics (bootstrap CI, McNemar, Holm)
 
-| run                 | method                  |   ΔF1 vs full | 95% CI           |   McNemar p |   Holm p |
-|:--------------------|:------------------------|--------------:|:-----------------|------------:|---------:|
-| 3B / Q4_K_M|hotpot  | Fixed 80%               |         0.018 | [-0.031, 0.096]  |       1     |    1     |
-| 3B / Q4_K_M|hotpot  | Fixed 60%               |         0.05  | [-0.012, 0.145]  |       0.5   |    1     |
-| 3B / Q4_K_M|hotpot  | Fixed 50%               |         0.073 | [0.039, 0.110]   |       0     |    0.005 |
-| 3B / Q4_K_M|hotpot  | Fixed 40%               |         0.099 | [0.009, 0.205]   |       0.125 |    1     |
-| 3B / Q4_K_M|hotpot  | Fixed 20%               |         0.095 | [0.054, 0.137]   |       0     |    0.001 |
-| 3B / Q4_K_M|hotpot  | LLMLingua-2 (50%)       |         0.082 | [-0.002, 0.180]  |       0.25  |    1     |
-| 3B / Q4_K_M|hotpot  | LLMLingua-2 (20%)       |         0.002 | [-0.139, 0.140]  |       0.375 |    1     |
-| 3B / Q4_K_M|hotpot  | Relevance top-m (iso)   |         0.076 | [0.036, 0.119]   |       0.001 |    0.015 |
-| 3B / Q4_K_M|hotpot  | DECAF no-cov (λ=6)      |         0.068 | [0.028, 0.108]   |       0     |    0.005 |
-| 3B / Q4_K_M|hotpot  | DECAF no-reorder (λ=6)  |         0.068 | [-0.042, 0.189]  |       0.125 |    1     |
-| 3B / Q4_K_M|hotpot  | DECAF λ=6 (BM25 scorer) |         0.069 | [-0.026, 0.176]  |       0.125 |    1     |
-| 3B / Q4_K_M|hotpot  | DECAF λ=2               |         0.065 | [-0.018, 0.163]  |       0.25  |    1     |
-| 3B / Q4_K_M|hotpot  | DECAF λ=6               |         0.077 | [0.036, 0.119]   |       0.001 |    0.009 |
-| 3B / Q4_K_M|hotpot  | DECAF λ=15              |         0.101 | [-0.009, 0.225]  |       0.062 |    0.562 |
-| 3B / Q4_K_M|trivia  | Fixed 50%               |         0.036 | [0.013, 0.063]   |       0.021 |    0.021 |
-| 3B / Q4_K_M|trivia  | Fixed 20%               |         0.078 | [0.040, 0.121]   |       0     |    0.002 |
-| 3B / Q4_K_M|trivia  | Relevance top-m (iso)   |         0.083 | [0.036, 0.128]   |       0.001 |    0.002 |
-| 3B / Q4_K_M|trivia  | DECAF no-cov (λ=6)      |         0.092 | [0.049, 0.136]   |       0     |    0.002 |
-| 3B / Q4_K_M|trivia  | DECAF λ=6               |         0.081 | [0.037, 0.123]   |       0.001 |    0.002 |
-| 3B / Q4_K_M|twowiki | Fixed 80%               |        -0.021 | [-0.096, 0.053]  |       1     |    1     |
-| 3B / Q4_K_M|twowiki | Fixed 60%               |        -0.07  | [-0.169, 0.027]  |       0.625 |    1     |
-| 3B / Q4_K_M|twowiki | Fixed 50%               |         0.015 | [-0.017, 0.049]  |       0.18  |    1     |
-| 3B / Q4_K_M|twowiki | Fixed 40%               |         0.03  | [-0.023, 0.105]  |       1     |    1     |
-| 3B / Q4_K_M|twowiki | Fixed 20%               |         0.036 | [-0.002, 0.075]  |       0.031 |    0.432 |
-| 3B / Q4_K_M|twowiki | LLMLingua-2 (50%)       |        -0.043 | [-0.135, 0.048]  |       1     |    1     |
-| 3B / Q4_K_M|twowiki | LLMLingua-2 (20%)       |         0.003 | [-0.106, 0.121]  |       0.625 |    1     |
-| 3B / Q4_K_M|twowiki | Relevance top-m (iso)   |         0     | [-0.039, 0.039]  |       0.804 |    1     |
-| 3B / Q4_K_M|twowiki | DECAF no-cov (λ=6)      |         0.012 | [-0.028, 0.051]  |       0.21  |    1     |
-| 3B / Q4_K_M|twowiki | DECAF no-reorder (λ=6)  |         0.086 | [-0.043, 0.218]  |       0.375 |    1     |
-| 3B / Q4_K_M|twowiki | DECAF λ=6 (BM25 scorer) |         0.068 | [-0.083, 0.219]  |       0.453 |    1     |
-| 3B / Q4_K_M|twowiki | DECAF λ=2               |         0.096 | [-0.033, 0.223]  |       0.375 |    1     |
-| 3B / Q4_K_M|twowiki | DECAF λ=6               |        -0     | [-0.039, 0.039]  |       0.607 |    1     |
-| 3B / Q4_K_M|twowiki | DECAF λ=15              |         0.038 | [-0.109, 0.194]  |       1     |    1     |
-| 3B / Q8_0|hotpot    | Fixed 80%               |         0.031 | [-0.014, 0.107]  |       1     |    1     |
-| 3B / Q8_0|hotpot    | Fixed 60%               |         0.091 | [0.004, 0.204]   |       0.25  |    1     |
-| 3B / Q8_0|hotpot    | Fixed 50%               |         0.037 | [0.012, 0.064]   |       0.146 |    1     |
-| 3B / Q8_0|hotpot    | Fixed 40%               |         0.058 | [0.002, 0.133]   |       0.5   |    1     |
-| 3B / Q8_0|hotpot    | Fixed 20%               |         0.053 | [0.019, 0.089]   |       0.001 |    0.018 |
-| 3B / Q8_0|hotpot    | LLMLingua-2 (50%)       |        -0.004 | [-0.038, 0.028]  |       1     |    1     |
-| 3B / Q8_0|hotpot    | LLMLingua-2 (20%)       |        -0.083 | [-0.180, 0.009]  |       1     |    1     |
-| 3B / Q8_0|hotpot    | Relevance top-m (iso)   |         0.029 | [-0.005, 0.065]  |       0.146 |    1     |
-| 3B / Q8_0|hotpot    | DECAF no-cov (λ=6)      |         0.037 | [0.003, 0.075]   |       0.013 |    0.168 |
-| 3B / Q8_0|hotpot    | DECAF no-reorder (λ=6)  |         0.093 | [-0.023, 0.215]  |       0.125 |    1     |
-| 3B / Q8_0|hotpot    | DECAF λ=6 (BM25 scorer) |         0.099 | [-0.002, 0.223]  |       0.125 |    1     |
-| 3B / Q8_0|hotpot    | DECAF λ=2               |         0.112 | [0.029, 0.216]   |       0.125 |    1     |
-| 3B / Q8_0|hotpot    | DECAF λ=6               |         0.027 | [-0.007, 0.062]  |       0.092 |    1     |
-| 3B / Q8_0|hotpot    | DECAF λ=15              |         0.069 | [-0.062, 0.205]  |       0.219 |    1     |
-| 3B / Q8_0|trivia    | Fixed 50%               |         0.021 | [-0.008, 0.050]  |       0.18  |    0.359 |
-| 3B / Q8_0|trivia    | Fixed 20%               |         0.044 | [0.006, 0.081]   |       0.019 |    0.077 |
-| 3B / Q8_0|trivia    | Relevance top-m (iso)   |         0.031 | [-0.002, 0.066]  |       0.118 |    0.355 |
-| 3B / Q8_0|trivia    | DECAF no-cov (λ=6)      |         0.054 | [0.016, 0.092]   |       0.012 |    0.059 |
-| 3B / Q8_0|trivia    | DECAF λ=6               |         0.025 | [-0.010, 0.062]  |       0.332 |    0.359 |
-| 3B / Q8_0|twowiki   | Fixed 80%               |        -0.031 | [-0.106, 0.024]  |       1     |    1     |
-| 3B / Q8_0|twowiki   | Fixed 60%               |        -0.018 | [-0.108, 0.063]  |       1     |    1     |
-| 3B / Q8_0|twowiki   | Fixed 50%               |         0.03  | [-0.001, 0.063]  |       0.039 |    0.54  |
-| 3B / Q8_0|twowiki   | Fixed 40%               |         0.012 | [-0.097, 0.123]  |       1     |    1     |
-| 3B / Q8_0|twowiki   | Fixed 20%               |         0.017 | [-0.017, 0.052]  |       0.581 |    1     |
-| 3B / Q8_0|twowiki   | LLMLingua-2 (50%)       |        -0.028 | [-0.111, 0.037]  |       1     |    1     |
-| 3B / Q8_0|twowiki   | LLMLingua-2 (20%)       |        -0.051 | [-0.119, 0.009]  |       1     |    1     |
-| 3B / Q8_0|twowiki   | Relevance top-m (iso)   |        -0.028 | [-0.057, 0.001]  |       0.289 |    1     |
-| 3B / Q8_0|twowiki   | DECAF no-cov (λ=6)      |        -0.011 | [-0.044, 0.019]  |       1     |    1     |
-| 3B / Q8_0|twowiki   | DECAF no-reorder (λ=6)  |        -0.065 | [-0.171, 0.027]  |       0.25  |    1     |
-| 3B / Q8_0|twowiki   | DECAF λ=6 (BM25 scorer) |        -0.039 | [-0.171, 0.085]  |       1     |    1     |
-| 3B / Q8_0|twowiki   | DECAF λ=2               |        -0.062 | [-0.176, 0.040]  |       0.25  |    1     |
-| 3B / Q8_0|twowiki   | DECAF λ=6               |        -0.032 | [-0.061, -0.002] |       0.289 |    1     |
-| 3B / Q8_0|twowiki   | DECAF λ=15              |        -0.048 | [-0.158, 0.065]  |       0.625 |    1     |
-| 7B / Q4_K_M|hotpot  | Fixed 80%               |        -0.031 | [-0.083, 0.001]  |       1     |    1     |
-| 7B / Q4_K_M|hotpot  | Fixed 60%               |        -0.011 | [-0.113, 0.105]  |       1     |    1     |
-| 7B / Q4_K_M|hotpot  | Fixed 50%               |        -0.019 | [-0.056, 0.022]  |       0.359 |    1     |
-| 7B / Q4_K_M|hotpot  | Fixed 40%               |        -0.094 | [-0.212, 0.014]  |       0.125 |    1     |
-| 7B / Q4_K_M|hotpot  | Fixed 20%               |        -0.055 | [-0.098, -0.011] |       0.007 |    0.066 |
-| 7B / Q4_K_M|hotpot  | LLMLingua-2 (50%)       |        -0.023 | [-0.148, 0.087]  |       0.453 |    1     |
-| 7B / Q4_K_M|hotpot  | LLMLingua-2 (20%)       |        -0.35  | [-0.505, -0.208] |       0.001 |    0.014 |
-| 7B / Q4_K_M|hotpot  | Relevance top-m (iso)   |        -0.092 | [-0.152, -0.037] |       0.005 |    0.056 |
-| 7B / Q4_K_M|hotpot  | DECAF no-cov (λ=6)      |        -0.085 | [-0.141, -0.032] |       0.002 |    0.025 |
-| 7B / Q4_K_M|hotpot  | DECAF no-reorder (λ=6)  |        -0.094 | [-0.245, 0.040]  |       0.219 |    1     |
-| 7B / Q4_K_M|hotpot  | DECAF λ=6 (BM25 scorer) |        -0.076 | [-0.225, 0.066]  |       0.375 |    1     |
-| 7B / Q4_K_M|hotpot  | DECAF λ=2               |        -0.082 | [-0.231, 0.047]  |       0.375 |    1     |
-| 7B / Q4_K_M|hotpot  | DECAF λ=6               |        -0.092 | [-0.151, -0.037] |       0.001 |    0.019 |
-| 7B / Q4_K_M|hotpot  | DECAF λ=15              |        -0.261 | [-0.451, -0.073] |       0.039 |    0.352 |
-| 7B / Q4_K_M|trivia  | Fixed 50%               |         0.029 | [-0.002, 0.064]  |       0.096 |    0.481 |
-| 7B / Q4_K_M|trivia  | Fixed 20%               |        -0.002 | [-0.041, 0.040]  |       1     |    1     |
-| 7B / Q4_K_M|trivia  | Relevance top-m (iso)   |        -0.015 | [-0.063, 0.036]  |       1     |    1     |
-| 7B / Q4_K_M|trivia  | DECAF no-cov (λ=6)      |         0.018 | [-0.027, 0.062]  |       0.345 |    1     |
-| 7B / Q4_K_M|trivia  | DECAF λ=6               |         0.001 | [-0.051, 0.054]  |       1     |    1     |
-| 7B / Q4_K_M|twowiki | Fixed 80%               |         0.03  | [-0.048, 0.113]  |       1     |    1     |
-| 7B / Q4_K_M|twowiki | Fixed 60%               |         0.011 | [-0.099, 0.120]  |       1     |    1     |
-| 7B / Q4_K_M|twowiki | Fixed 50%               |         0.012 | [-0.023, 0.044]  |       1     |    1     |
-| 7B / Q4_K_M|twowiki | Fixed 40%               |        -0.008 | [-0.104, 0.081]  |       1     |    1     |
-| 7B / Q4_K_M|twowiki | Fixed 20%               |         0.009 | [-0.031, 0.050]  |       1     |    1     |
-| 7B / Q4_K_M|twowiki | LLMLingua-2 (50%)       |        -0.027 | [-0.108, 0.043]  |       0.5   |    1     |
-| 7B / Q4_K_M|twowiki | LLMLingua-2 (20%)       |        -0.039 | [-0.179, 0.089]  |       1     |    1     |
-| 7B / Q4_K_M|twowiki | Relevance top-m (iso)   |        -0.011 | [-0.055, 0.032]  |       0.69  |    1     |
-| 7B / Q4_K_M|twowiki | DECAF no-cov (λ=6)      |        -0.01  | [-0.057, 0.036]  |       0.839 |    1     |
-| 7B / Q4_K_M|twowiki | DECAF no-reorder (λ=6)  |         0.015 | [-0.144, 0.173]  |       1     |    1     |
-| 7B / Q4_K_M|twowiki | DECAF λ=6 (BM25 scorer) |        -0.091 | [-0.227, 0.033]  |       0.688 |    1     |
-| 7B / Q4_K_M|twowiki | DECAF λ=2               |        -0.043 | [-0.186, 0.082]  |       0.375 |    1     |
-| 7B / Q4_K_M|twowiki | DECAF λ=6               |        -0.023 | [-0.067, 0.021]  |       0.678 |    1     |
-| 7B / Q4_K_M|twowiki | DECAF λ=15              |        -0.129 | [-0.279, 0.000]  |       0.031 |    0.438 |
-| 7B / Q8_0|hotpot    | Fixed 80%               |        -0.033 | [-0.089, 0.007]  |       1     |    1     |
-| 7B / Q8_0|hotpot    | Fixed 60%               |        -0.046 | [-0.135, 0.021]  |       0.5   |    1     |
-| 7B / Q8_0|hotpot    | Fixed 50%               |         0.014 | [-0.019, 0.048]  |       1     |    1     |
-| 7B / Q8_0|hotpot    | Fixed 40%               |        -0.077 | [-0.180, 0.004]  |       0.25  |    1     |
-| 7B / Q8_0|hotpot    | Fixed 20%               |        -0.024 | [-0.067, 0.021]  |       0.122 |    1     |
-| 7B / Q8_0|hotpot    | LLMLingua-2 (50%)       |        -0.07  | [-0.150, 0.003]  |       0.375 |    1     |
-| 7B / Q8_0|hotpot    | LLMLingua-2 (20%)       |        -0.379 | [-0.537, -0.235] |       0.001 |    0.014 |
-| 7B / Q8_0|hotpot    | Relevance top-m (iso)   |        -0.063 | [-0.119, -0.015] |       0.009 |    0.099 |
-| 7B / Q8_0|hotpot    | DECAF no-cov (λ=6)      |        -0.057 | [-0.113, -0.004] |       0.014 |    0.135 |
-| 7B / Q8_0|hotpot    | DECAF no-reorder (λ=6)  |        -0.089 | [-0.234, 0.046]  |       0.453 |    1     |
-| 7B / Q8_0|hotpot    | DECAF λ=6 (BM25 scorer) |        -0.072 | [-0.187, 0.035]  |       0.625 |    1     |
-| 7B / Q8_0|hotpot    | DECAF λ=2               |        -0.064 | [-0.186, 0.060]  |       0.375 |    1     |
-| 7B / Q8_0|hotpot    | DECAF λ=6               |        -0.064 | [-0.118, -0.014] |       0.004 |    0.051 |
-| 7B / Q8_0|hotpot    | DECAF λ=15              |        -0.253 | [-0.410, -0.105] |       0.008 |    0.094 |
-| 7B / Q8_0|trivia    | Fixed 50%               |         0.019 | [-0.014, 0.057]  |       0.481 |    1     |
-| 7B / Q8_0|trivia    | Fixed 20%               |         0.017 | [-0.023, 0.057]  |       0.664 |    1     |
-| 7B / Q8_0|trivia    | Relevance top-m (iso)   |        -0.003 | [-0.048, 0.042]  |       0.72  |    1     |
-| 7B / Q8_0|trivia    | DECAF no-cov (λ=6)      |         0.033 | [-0.008, 0.076]  |       0.108 |    0.539 |
-| 7B / Q8_0|trivia    | DECAF λ=6               |         0.003 | [-0.045, 0.053]  |       0.868 |    1     |
-| 7B / Q8_0|twowiki   | Fixed 80%               |        -0.002 | [-0.080, 0.054]  |       1     |    1     |
-| 7B / Q8_0|twowiki   | Fixed 60%               |         0.062 | [-0.046, 0.186]  |       1     |    1     |
-| 7B / Q8_0|twowiki   | Fixed 50%               |         0.025 | [-0.013, 0.063]  |       0.383 |    1     |
-| 7B / Q8_0|twowiki   | Fixed 40%               |         0.039 | [-0.092, 0.170]  |       1     |    1     |
-| 7B / Q8_0|twowiki   | Fixed 20%               |         0.031 | [-0.013, 0.075]  |       0.557 |    1     |
-| 7B / Q8_0|twowiki   | LLMLingua-2 (50%)       |         0.007 | [-0.053, 0.058]  |       1     |    1     |
-| 7B / Q8_0|twowiki   | LLMLingua-2 (20%)       |         0.017 | [-0.163, 0.190]  |       1     |    1     |
-| 7B / Q8_0|twowiki   | Relevance top-m (iso)   |        -0.008 | [-0.060, 0.043]  |       1     |    1     |
-| 7B / Q8_0|twowiki   | DECAF no-cov (λ=6)      |         0.019 | [-0.031, 0.064]  |       0.345 |    1     |
-| 7B / Q8_0|twowiki   | DECAF no-reorder (λ=6)  |         0.03  | [-0.126, 0.191]  |       1     |    1     |
-| 7B / Q8_0|twowiki   | DECAF λ=6 (BM25 scorer) |        -0.055 | [-0.178, 0.054]  |       1     |    1     |
-| 7B / Q8_0|twowiki   | DECAF λ=2               |        -0.004 | [-0.147, 0.136]  |       1     |    1     |
-| 7B / Q8_0|twowiki   | DECAF λ=6               |        -0.02  | [-0.071, 0.028]  |       1     |    1     |
-| 7B / Q8_0|twowiki   | DECAF λ=15              |        -0.076 | [-0.251, 0.093]  |       0.727 |    1     |
+| run                   | method                  |   ΔF1 vs full | 95% CI           |   McNemar p |   Holm p |
+|:----------------------|:------------------------|--------------:|:-----------------|------------:|---------:|
+| 3B / Q4_K_M|hotpot    | Fixed 80%               |         0.018 | [-0.031, 0.096]  |       1     |    1     |
+| 3B / Q4_K_M|hotpot    | Fixed 60%               |         0.05  | [-0.012, 0.145]  |       0.5   |    1     |
+| 3B / Q4_K_M|hotpot    | Fixed 50%               |         0.073 | [0.039, 0.110]   |       0     |    0.005 |
+| 3B / Q4_K_M|hotpot    | Fixed 40%               |         0.099 | [0.009, 0.205]   |       0.125 |    1     |
+| 3B / Q4_K_M|hotpot    | Fixed 20%               |         0.095 | [0.054, 0.137]   |       0     |    0.001 |
+| 3B / Q4_K_M|hotpot    | LLMLingua-2 (50%)       |         0.082 | [-0.002, 0.180]  |       0.25  |    1     |
+| 3B / Q4_K_M|hotpot    | LLMLingua-2 (20%)       |         0.002 | [-0.139, 0.140]  |       0.375 |    1     |
+| 3B / Q4_K_M|hotpot    | Relevance top-m (iso)   |         0.076 | [0.036, 0.119]   |       0.001 |    0.015 |
+| 3B / Q4_K_M|hotpot    | DECAF no-cov (λ=6)      |         0.068 | [0.028, 0.108]   |       0     |    0.005 |
+| 3B / Q4_K_M|hotpot    | DECAF no-reorder (λ=6)  |         0.068 | [-0.042, 0.189]  |       0.125 |    1     |
+| 3B / Q4_K_M|hotpot    | DECAF λ=6 (BM25 scorer) |         0.069 | [-0.026, 0.176]  |       0.125 |    1     |
+| 3B / Q4_K_M|hotpot    | DECAF λ=2               |         0.065 | [-0.018, 0.163]  |       0.25  |    1     |
+| 3B / Q4_K_M|hotpot    | DECAF λ=6               |         0.077 | [0.036, 0.119]   |       0.001 |    0.009 |
+| 3B / Q4_K_M|hotpot    | DECAF λ=15              |         0.101 | [-0.009, 0.225]  |       0.062 |    0.562 |
+| 3B / Q4_K_M|longbench | Fixed 50%               |        -0.136 | [-0.191, -0.086] |       0     |    0     |
+| 3B / Q4_K_M|longbench | Fixed 20%               |        -0.128 | [-0.183, -0.076] |       0     |    0     |
+| 3B / Q4_K_M|longbench | Relevance top-m (iso)   |        -0.143 | [-0.204, -0.084] |       0     |    0     |
+| 3B / Q4_K_M|longbench | DECAF no-cov (λ=6)      |        -0.12  | [-0.180, -0.063] |       0     |    0     |
+| 3B / Q4_K_M|longbench | DECAF λ=6               |        -0.146 | [-0.207, -0.090] |       0     |    0     |
+| 3B / Q4_K_M|trivia    | Fixed 50%               |         0.036 | [0.013, 0.063]   |       0.021 |    0.021 |
+| 3B / Q4_K_M|trivia    | Fixed 20%               |         0.078 | [0.040, 0.121]   |       0     |    0.002 |
+| 3B / Q4_K_M|trivia    | Relevance top-m (iso)   |         0.083 | [0.036, 0.128]   |       0.001 |    0.002 |
+| 3B / Q4_K_M|trivia    | DECAF no-cov (λ=6)      |         0.092 | [0.049, 0.136]   |       0     |    0.002 |
+| 3B / Q4_K_M|trivia    | DECAF λ=6               |         0.081 | [0.037, 0.123]   |       0.001 |    0.002 |
+| 3B / Q4_K_M|twowiki   | Fixed 80%               |        -0.021 | [-0.096, 0.053]  |       1     |    1     |
+| 3B / Q4_K_M|twowiki   | Fixed 60%               |        -0.07  | [-0.169, 0.027]  |       0.625 |    1     |
+| 3B / Q4_K_M|twowiki   | Fixed 50%               |         0.015 | [-0.017, 0.049]  |       0.18  |    1     |
+| 3B / Q4_K_M|twowiki   | Fixed 40%               |         0.03  | [-0.023, 0.105]  |       1     |    1     |
+| 3B / Q4_K_M|twowiki   | Fixed 20%               |         0.036 | [-0.002, 0.075]  |       0.031 |    0.432 |
+| 3B / Q4_K_M|twowiki   | LLMLingua-2 (50%)       |        -0.043 | [-0.135, 0.048]  |       1     |    1     |
+| 3B / Q4_K_M|twowiki   | LLMLingua-2 (20%)       |         0.003 | [-0.106, 0.121]  |       0.625 |    1     |
+| 3B / Q4_K_M|twowiki   | Relevance top-m (iso)   |         0     | [-0.039, 0.039]  |       0.804 |    1     |
+| 3B / Q4_K_M|twowiki   | DECAF no-cov (λ=6)      |         0.012 | [-0.028, 0.051]  |       0.21  |    1     |
+| 3B / Q4_K_M|twowiki   | DECAF no-reorder (λ=6)  |         0.086 | [-0.043, 0.218]  |       0.375 |    1     |
+| 3B / Q4_K_M|twowiki   | DECAF λ=6 (BM25 scorer) |         0.068 | [-0.083, 0.219]  |       0.453 |    1     |
+| 3B / Q4_K_M|twowiki   | DECAF λ=2               |         0.096 | [-0.033, 0.223]  |       0.375 |    1     |
+| 3B / Q4_K_M|twowiki   | DECAF λ=6               |        -0     | [-0.039, 0.039]  |       0.607 |    1     |
+| 3B / Q4_K_M|twowiki   | DECAF λ=15              |         0.038 | [-0.109, 0.194]  |       1     |    1     |
+| 3B / Q8_0|hotpot      | Fixed 80%               |         0.031 | [-0.014, 0.107]  |       1     |    1     |
+| 3B / Q8_0|hotpot      | Fixed 60%               |         0.091 | [0.004, 0.204]   |       0.25  |    1     |
+| 3B / Q8_0|hotpot      | Fixed 50%               |         0.037 | [0.012, 0.064]   |       0.146 |    1     |
+| 3B / Q8_0|hotpot      | Fixed 40%               |         0.058 | [0.002, 0.133]   |       0.5   |    1     |
+| 3B / Q8_0|hotpot      | Fixed 20%               |         0.053 | [0.019, 0.089]   |       0.001 |    0.018 |
+| 3B / Q8_0|hotpot      | LLMLingua-2 (50%)       |        -0.004 | [-0.038, 0.028]  |       1     |    1     |
+| 3B / Q8_0|hotpot      | LLMLingua-2 (20%)       |        -0.083 | [-0.180, 0.009]  |       1     |    1     |
+| 3B / Q8_0|hotpot      | Relevance top-m (iso)   |         0.029 | [-0.005, 0.065]  |       0.146 |    1     |
+| 3B / Q8_0|hotpot      | DECAF no-cov (λ=6)      |         0.037 | [0.003, 0.075]   |       0.013 |    0.168 |
+| 3B / Q8_0|hotpot      | DECAF no-reorder (λ=6)  |         0.093 | [-0.023, 0.215]  |       0.125 |    1     |
+| 3B / Q8_0|hotpot      | DECAF λ=6 (BM25 scorer) |         0.099 | [-0.002, 0.223]  |       0.125 |    1     |
+| 3B / Q8_0|hotpot      | DECAF λ=2               |         0.112 | [0.029, 0.216]   |       0.125 |    1     |
+| 3B / Q8_0|hotpot      | DECAF λ=6               |         0.027 | [-0.007, 0.062]  |       0.092 |    1     |
+| 3B / Q8_0|hotpot      | DECAF λ=15              |         0.069 | [-0.062, 0.205]  |       0.219 |    1     |
+| 3B / Q8_0|longbench   | Fixed 50%               |        -0.147 | [-0.199, -0.098] |       0     |    0     |
+| 3B / Q8_0|longbench   | Fixed 20%               |        -0.144 | [-0.199, -0.092] |       0     |    0     |
+| 3B / Q8_0|longbench   | Relevance top-m (iso)   |        -0.174 | [-0.234, -0.119] |       0     |    0     |
+| 3B / Q8_0|longbench   | DECAF no-cov (λ=6)      |        -0.162 | [-0.218, -0.110] |       0     |    0     |
+| 3B / Q8_0|longbench   | DECAF λ=6               |        -0.174 | [-0.231, -0.120] |       0     |    0     |
+| 3B / Q8_0|trivia      | Fixed 50%               |         0.021 | [-0.008, 0.050]  |       0.18  |    0.359 |
+| 3B / Q8_0|trivia      | Fixed 20%               |         0.044 | [0.006, 0.081]   |       0.019 |    0.077 |
+| 3B / Q8_0|trivia      | Relevance top-m (iso)   |         0.031 | [-0.002, 0.066]  |       0.118 |    0.355 |
+| 3B / Q8_0|trivia      | DECAF no-cov (λ=6)      |         0.054 | [0.016, 0.092]   |       0.012 |    0.059 |
+| 3B / Q8_0|trivia      | DECAF λ=6               |         0.025 | [-0.010, 0.062]  |       0.332 |    0.359 |
+| 3B / Q8_0|twowiki     | Fixed 80%               |        -0.031 | [-0.106, 0.024]  |       1     |    1     |
+| 3B / Q8_0|twowiki     | Fixed 60%               |        -0.018 | [-0.108, 0.063]  |       1     |    1     |
+| 3B / Q8_0|twowiki     | Fixed 50%               |         0.03  | [-0.001, 0.063]  |       0.039 |    0.54  |
+| 3B / Q8_0|twowiki     | Fixed 40%               |         0.012 | [-0.097, 0.123]  |       1     |    1     |
+| 3B / Q8_0|twowiki     | Fixed 20%               |         0.017 | [-0.017, 0.052]  |       0.581 |    1     |
+| 3B / Q8_0|twowiki     | LLMLingua-2 (50%)       |        -0.028 | [-0.111, 0.037]  |       1     |    1     |
+| 3B / Q8_0|twowiki     | LLMLingua-2 (20%)       |        -0.051 | [-0.119, 0.009]  |       1     |    1     |
+| 3B / Q8_0|twowiki     | Relevance top-m (iso)   |        -0.028 | [-0.057, 0.001]  |       0.289 |    1     |
+| 3B / Q8_0|twowiki     | DECAF no-cov (λ=6)      |        -0.011 | [-0.044, 0.019]  |       1     |    1     |
+| 3B / Q8_0|twowiki     | DECAF no-reorder (λ=6)  |        -0.065 | [-0.171, 0.027]  |       0.25  |    1     |
+| 3B / Q8_0|twowiki     | DECAF λ=6 (BM25 scorer) |        -0.039 | [-0.171, 0.085]  |       1     |    1     |
+| 3B / Q8_0|twowiki     | DECAF λ=2               |        -0.062 | [-0.176, 0.040]  |       0.25  |    1     |
+| 3B / Q8_0|twowiki     | DECAF λ=6               |        -0.032 | [-0.061, -0.002] |       0.289 |    1     |
+| 3B / Q8_0|twowiki     | DECAF λ=15              |        -0.048 | [-0.158, 0.065]  |       0.625 |    1     |
+| 7B / Q4_K_M|hotpot    | Fixed 80%               |        -0.031 | [-0.083, 0.001]  |       1     |    1     |
+| 7B / Q4_K_M|hotpot    | Fixed 60%               |        -0.011 | [-0.113, 0.105]  |       1     |    1     |
+| 7B / Q4_K_M|hotpot    | Fixed 50%               |        -0.019 | [-0.056, 0.022]  |       0.359 |    1     |
+| 7B / Q4_K_M|hotpot    | Fixed 40%               |        -0.094 | [-0.212, 0.014]  |       0.125 |    1     |
+| 7B / Q4_K_M|hotpot    | Fixed 20%               |        -0.055 | [-0.098, -0.011] |       0.007 |    0.066 |
+| 7B / Q4_K_M|hotpot    | LLMLingua-2 (50%)       |        -0.023 | [-0.148, 0.087]  |       0.453 |    1     |
+| 7B / Q4_K_M|hotpot    | LLMLingua-2 (20%)       |        -0.35  | [-0.505, -0.208] |       0.001 |    0.014 |
+| 7B / Q4_K_M|hotpot    | Relevance top-m (iso)   |        -0.092 | [-0.152, -0.037] |       0.005 |    0.056 |
+| 7B / Q4_K_M|hotpot    | DECAF no-cov (λ=6)      |        -0.085 | [-0.141, -0.032] |       0.002 |    0.025 |
+| 7B / Q4_K_M|hotpot    | DECAF no-reorder (λ=6)  |        -0.094 | [-0.245, 0.040]  |       0.219 |    1     |
+| 7B / Q4_K_M|hotpot    | DECAF λ=6 (BM25 scorer) |        -0.076 | [-0.225, 0.066]  |       0.375 |    1     |
+| 7B / Q4_K_M|hotpot    | DECAF λ=2               |        -0.082 | [-0.231, 0.047]  |       0.375 |    1     |
+| 7B / Q4_K_M|hotpot    | DECAF λ=6               |        -0.092 | [-0.151, -0.037] |       0.001 |    0.019 |
+| 7B / Q4_K_M|hotpot    | DECAF λ=15              |        -0.261 | [-0.451, -0.073] |       0.039 |    0.352 |
+| 7B / Q4_K_M|longbench | Fixed 50%               |        -0.037 | [-0.112, 0.028]  |       0.5   |    1     |
+| 7B / Q4_K_M|longbench | Fixed 20%               |         0.01  | [-0.115, 0.148]  |       1     |    1     |
+| 7B / Q4_K_M|longbench | Relevance top-m (iso)   |        -0.068 | [-0.253, 0.115]  |       0.625 |    1     |
+| 7B / Q4_K_M|longbench | DECAF no-cov (λ=6)      |        -0.101 | [-0.310, 0.117]  |       0.375 |    1     |
+| 7B / Q4_K_M|longbench | DECAF λ=6               |        -0.068 | [-0.253, 0.115]  |       0.625 |    1     |
+| 7B / Q4_K_M|trivia    | Fixed 50%               |         0.029 | [-0.002, 0.064]  |       0.096 |    0.481 |
+| 7B / Q4_K_M|trivia    | Fixed 20%               |        -0.002 | [-0.041, 0.040]  |       1     |    1     |
+| 7B / Q4_K_M|trivia    | Relevance top-m (iso)   |        -0.015 | [-0.063, 0.036]  |       1     |    1     |
+| 7B / Q4_K_M|trivia    | DECAF no-cov (λ=6)      |         0.018 | [-0.027, 0.062]  |       0.345 |    1     |
+| 7B / Q4_K_M|trivia    | DECAF λ=6               |         0.001 | [-0.051, 0.054]  |       1     |    1     |
+| 7B / Q4_K_M|twowiki   | Fixed 80%               |         0.03  | [-0.048, 0.113]  |       1     |    1     |
+| 7B / Q4_K_M|twowiki   | Fixed 60%               |         0.011 | [-0.099, 0.120]  |       1     |    1     |
+| 7B / Q4_K_M|twowiki   | Fixed 50%               |         0.012 | [-0.023, 0.044]  |       1     |    1     |
+| 7B / Q4_K_M|twowiki   | Fixed 40%               |        -0.008 | [-0.104, 0.081]  |       1     |    1     |
+| 7B / Q4_K_M|twowiki   | Fixed 20%               |         0.009 | [-0.031, 0.050]  |       1     |    1     |
+| 7B / Q4_K_M|twowiki   | LLMLingua-2 (50%)       |        -0.027 | [-0.108, 0.043]  |       0.5   |    1     |
+| 7B / Q4_K_M|twowiki   | LLMLingua-2 (20%)       |        -0.039 | [-0.179, 0.089]  |       1     |    1     |
+| 7B / Q4_K_M|twowiki   | Relevance top-m (iso)   |        -0.011 | [-0.055, 0.032]  |       0.69  |    1     |
+| 7B / Q4_K_M|twowiki   | DECAF no-cov (λ=6)      |        -0.01  | [-0.057, 0.036]  |       0.839 |    1     |
+| 7B / Q4_K_M|twowiki   | DECAF no-reorder (λ=6)  |         0.015 | [-0.144, 0.173]  |       1     |    1     |
+| 7B / Q4_K_M|twowiki   | DECAF λ=6 (BM25 scorer) |        -0.091 | [-0.227, 0.033]  |       0.688 |    1     |
+| 7B / Q4_K_M|twowiki   | DECAF λ=2               |        -0.043 | [-0.186, 0.082]  |       0.375 |    1     |
+| 7B / Q4_K_M|twowiki   | DECAF λ=6               |        -0.023 | [-0.067, 0.021]  |       0.678 |    1     |
+| 7B / Q4_K_M|twowiki   | DECAF λ=15              |        -0.129 | [-0.279, 0.000]  |       0.031 |    0.438 |
+| 7B / Q8_0|hotpot      | Fixed 80%               |        -0.033 | [-0.089, 0.007]  |       1     |    1     |
+| 7B / Q8_0|hotpot      | Fixed 60%               |        -0.046 | [-0.135, 0.021]  |       0.5   |    1     |
+| 7B / Q8_0|hotpot      | Fixed 50%               |         0.014 | [-0.019, 0.048]  |       1     |    1     |
+| 7B / Q8_0|hotpot      | Fixed 40%               |        -0.077 | [-0.180, 0.004]  |       0.25  |    1     |
+| 7B / Q8_0|hotpot      | Fixed 20%               |        -0.024 | [-0.067, 0.021]  |       0.122 |    1     |
+| 7B / Q8_0|hotpot      | LLMLingua-2 (50%)       |        -0.07  | [-0.150, 0.003]  |       0.375 |    1     |
+| 7B / Q8_0|hotpot      | LLMLingua-2 (20%)       |        -0.379 | [-0.537, -0.235] |       0.001 |    0.014 |
+| 7B / Q8_0|hotpot      | Relevance top-m (iso)   |        -0.063 | [-0.119, -0.015] |       0.009 |    0.099 |
+| 7B / Q8_0|hotpot      | DECAF no-cov (λ=6)      |        -0.057 | [-0.113, -0.004] |       0.014 |    0.135 |
+| 7B / Q8_0|hotpot      | DECAF no-reorder (λ=6)  |        -0.089 | [-0.234, 0.046]  |       0.453 |    1     |
+| 7B / Q8_0|hotpot      | DECAF λ=6 (BM25 scorer) |        -0.072 | [-0.187, 0.035]  |       0.625 |    1     |
+| 7B / Q8_0|hotpot      | DECAF λ=2               |        -0.064 | [-0.186, 0.060]  |       0.375 |    1     |
+| 7B / Q8_0|hotpot      | DECAF λ=6               |        -0.064 | [-0.118, -0.014] |       0.004 |    0.051 |
+| 7B / Q8_0|hotpot      | DECAF λ=15              |        -0.253 | [-0.410, -0.105] |       0.008 |    0.094 |
+| 7B / Q8_0|trivia      | Fixed 50%               |         0.019 | [-0.014, 0.057]  |       0.481 |    1     |
+| 7B / Q8_0|trivia      | Fixed 20%               |         0.017 | [-0.023, 0.057]  |       0.664 |    1     |
+| 7B / Q8_0|trivia      | Relevance top-m (iso)   |        -0.003 | [-0.048, 0.042]  |       0.72  |    1     |
+| 7B / Q8_0|trivia      | DECAF no-cov (λ=6)      |         0.033 | [-0.008, 0.076]  |       0.108 |    0.539 |
+| 7B / Q8_0|trivia      | DECAF λ=6               |         0.003 | [-0.045, 0.053]  |       0.868 |    1     |
+| 7B / Q8_0|twowiki     | Fixed 80%               |        -0.002 | [-0.080, 0.054]  |       1     |    1     |
+| 7B / Q8_0|twowiki     | Fixed 60%               |         0.062 | [-0.046, 0.186]  |       1     |    1     |
+| 7B / Q8_0|twowiki     | Fixed 50%               |         0.025 | [-0.013, 0.063]  |       0.383 |    1     |
+| 7B / Q8_0|twowiki     | Fixed 40%               |         0.039 | [-0.092, 0.170]  |       1     |    1     |
+| 7B / Q8_0|twowiki     | Fixed 20%               |         0.031 | [-0.013, 0.075]  |       0.557 |    1     |
+| 7B / Q8_0|twowiki     | LLMLingua-2 (50%)       |         0.007 | [-0.053, 0.058]  |       1     |    1     |
+| 7B / Q8_0|twowiki     | LLMLingua-2 (20%)       |         0.017 | [-0.163, 0.190]  |       1     |    1     |
+| 7B / Q8_0|twowiki     | Relevance top-m (iso)   |        -0.008 | [-0.060, 0.043]  |       1     |    1     |
+| 7B / Q8_0|twowiki     | DECAF no-cov (λ=6)      |         0.019 | [-0.031, 0.064]  |       0.345 |    1     |
+| 7B / Q8_0|twowiki     | DECAF no-reorder (λ=6)  |         0.03  | [-0.126, 0.191]  |       1     |    1     |
+| 7B / Q8_0|twowiki     | DECAF λ=6 (BM25 scorer) |        -0.055 | [-0.178, 0.054]  |       1     |    1     |
+| 7B / Q8_0|twowiki     | DECAF λ=2               |        -0.004 | [-0.147, 0.136]  |       1     |    1     |
+| 7B / Q8_0|twowiki     | DECAF λ=6               |        -0.02  | [-0.071, 0.028]  |       1     |    1     |
+| 7B / Q8_0|twowiki     | DECAF λ=15              |        -0.076 | [-0.251, 0.093]  |       0.727 |    1     |
 
 Figures: `fig_v2_stats_forest.png`. Full numbers in `summary_v2.json` under `stats`.
 

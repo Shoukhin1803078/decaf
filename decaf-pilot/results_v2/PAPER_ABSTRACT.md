@@ -15,9 +15,9 @@ Context compression is the standard remedy for the latency cost of retrieval-aug
 deployments without a GPU run on CPU, where the cost profile is different and, we show here, changes
 the conclusion. We present a controlled characterization of **when retrieved-context compression
 actually pays off on CPU** for small, quantized LLMs. Using a staged, fully-instrumented harness
-(4 model×quantization configs: Qwen2.5 3B/7B in Q4_K_M/Q8_0; three benchmarks — two multi-hop,
-one single-hop; 200 questions each; 15,236 runs), we separate retrieval, compression, prefill and
-decode. We find that on CPU
+(4 model×quantization configs: Qwen2.5 3B/7B in Q4_K_M/Q8_0; four benchmarks — multi-hop,
+single-hop and long-context; 200 questions each; 21,420 runs), we separate retrieval, compression,
+prefill and decode. We find that on CPU
 **prefill — not decode — dominates** end-to-end latency (prefill ≈ 5–11 ms/token while per-token decode
 is nearly flat in context length), so compression's benefit is in time-to-first-token, and the
 GPU-era decode-centric premise does not hold for concise answers. Compression is a **net latency win

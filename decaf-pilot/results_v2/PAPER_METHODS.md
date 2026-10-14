@@ -37,6 +37,8 @@ Two multi-hop QA benchmarks plus one single-hop benchmark, all with gold support
 - **2WikiMultihopQA** — same structure, harder, 4 gold paragraphs/question (two hops).
 - **TriviaQA** (rc.wikipedia, single-hop) — provided Wikipedia article(s) per question
   (`entity_pages`), truncated to 20 sentences/document; gold = answer-alias-bearing sentences.
+- **LongBench** (hotpotqa, long-context multi-document) — the long provided context is chunked into
+  6-sentence segments (the paraphrase of retrieved paragraphs); gold = answer-bearing sentences.
 
 We sample **n = 200** questions per dataset with a fixed seed (deterministic shuffle), and hold the
 prompt template, retrieval depth and metrics identical across all configurations.

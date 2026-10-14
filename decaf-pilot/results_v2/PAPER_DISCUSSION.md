@@ -41,8 +41,10 @@ larger model can exploit it. This interaction was **invisible at n = 30** and is
 conclusion that requires adequate statistical power. Crucially, it is **dataset-dependent**: on
 single-hop TriviaQA compression is **neutral for the 7B** (ΔF1 ≈ 0, n = 200) rather than harmful,
 because single-hop provided contexts lack the long distractor structure that the larger model can
-exploit. The finding is therefore about the *interaction of model size with task/context structure*,
-not model size alone. It reframes the
+exploit. And on **long-context LongBench** compression is **harmful for both sizes** (3B DECAF λ6
+−0.146, p<0.001): with the answer evidence spread across a long context, aggressive selection removes it
+(gold-in-evidence 0.64 → 0.38). The finding is therefore about the *interaction of model size with
+task/context structure*, not model size alone. It reframes the
 deployment question from "should I compress?" to "**for which model, task and context length** should
 I compress?".
 

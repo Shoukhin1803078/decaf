@@ -5,10 +5,11 @@ break-even thresholds.*
 
 **Setup.** Single CPU host (8 physical cores, 16 GB RAM), Ollama / llama.cpp. Four
 model×quantization configs — Qwen2.5-**3B**-Instruct and **7B**-Instruct in **Q4_K_M** and **Q8_0**.
-Three QA datasets — **HotpotQA** and **2WikiMultihopQA** (multi-hop) and **TriviaQA** (single-hop).
+Four QA datasets — **HotpotQA** and **2WikiMultihopQA** (multi-hop), **TriviaQA** (single-hop), and
+**LongBench** hotpotqa (long-context multi-document).
 Scorer: cross-encoder `BAAI/bge-reranker-base` (CPU). Retrieval modes: BM25, dense
 (`bge-small-en-v1.5`), hybrid (RRF). **All configs are evaluated at n = 200 questions per dataset**; a
-few probe methods are reported at n = 30 and marked as such. 17,460 runs total; statistics are paired
+few probe methods are reported at n = 30 and marked as such. 21,420 runs total; statistics are paired
 bootstrap CIs, McNemar's test (EM) and Holm–Bonferroni correction across the method family.
 
 ---
@@ -152,6 +153,20 @@ single-hop TriviaQA the 7B is unaffected (ΔF1 ≈ 0, not negative). Grounding s
 the headline claim. (*At n ≈ 29 the 7B/Q4 appeared to gain +0.087; the full n = 200 shows that was
 small-sample noise.*) *Figures:* TriviaQA points appear in `fig_v2_pareto_all`,
 `fig_v2_grounding_vs_ratio`, `fig_v2_dataset_compare`.
+
+### 3.5 Long-context multi-document (LongBench)
+
+On a long-context multi-document set, compression **hurts** — and significantly so even for the 3B:
+
+| config | full F1 | DECAF λ6 F1 | ΔF1 (Holm p) | gold-in-ev (full → comp) |
+|---|---:|---:|---|---:|
+| 3B/Q4 | 0.302 | 0.156 | **−0.146 (<0.001)** | 0.640 → 0.380 |
+| 3B/Q8 | 0.303 | 0.129 | **−0.174 (<0.001)** | 0.640 → 0.380 |
+
+All methods are negative (−0.12…−0.17), because when the answer evidence is spread across a long
+context, aggressive selection removes it (gold-in-evidence 0.64 → 0.38). This is the **opposite regime**
+from TriviaQA (§3.4): compression's value is **strongly task- and context-dependent** — it helps on
+short distractor-heavy contexts, is neutral on 2Wiki, and is harmful on long-context multi-doc QA.
 
 ---
 

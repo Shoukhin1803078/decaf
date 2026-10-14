@@ -1,8 +1,8 @@
 # DECAF — Remaining Experiments
 
 **Date:** 2026-10-14
-**Current state:** ✅ v2 core complete — **18,900 runs**, 41 figures, `results_v2/FULL_RESULTS_V2.md`
-(3 datasets — HotpotQA, 2Wiki, TriviaQA — all 4 configs at n=200; retrieval modes on all 4 configs).
+**Current state:** ✅ v2 core complete — **21,420 runs**, 41 figures, `results_v2/FULL_RESULTS_V2.md`
+(4 datasets — HotpotQA, 2Wiki, TriviaQA, LongBench; retrieval on all 4 configs; 3B at n=200).
 This file tracks what is **not** yet done, so it is easy to pick up.
 
 ## Summary
@@ -20,7 +20,8 @@ Ordered roughly by priority (highest first). "Est. runs" is a data-volume guide,
 
 ## Start here (resume tomorrow)
 
-**Top item — LongBench** (needs a small loader, like the TriviaQA one added in `src/data_v2.py`), then:
+**Top item — finish LongBench for the 7B configs** (3B done at n=200; 7B/Q4 partial ~20, 7B/Q8 not run).
+Resumable: only uncached runs execute.
 
 ```bash
 cd decaf-pilot
@@ -37,7 +38,7 @@ Everything else (§A/§B) is listed below with what it needs.
 
 | # | ID | Experiment | Category | Needs | Est. runs | Priority |
 |---:|---|---|---|---|---:|---|
-| 1 | E9 | **LongBench** multi-document QA | generalization | HF dataset + loader | 4 cfgs × ~200 q × ~5 methods ≈ 4,000 | high |
+| 1 | E9 | **Finish LongBench for 7B** (3B done at n=200; 7B/Q4 partial) | generalization | re-run (resumable) | 2 cfgs × ~180 q × 6 methods ≈ 2,200 | high |
 | 2 | base | **Perception Compressor** baseline | external baseline | research code (install/adapt) | 4 cfgs × ds × q × 1–2 rates | medium |
 | 3 | E1 | **Compressed-context `TPOT(L)` curve** (full vs compressed) | scaling | new Phase-A mode | ~60 | medium |
 | 4 | §17 | **CPU-cost-term on/off** (explicit) | ablation | new method variant (rel_iso is a proxy) | ~1,600 | medium |
@@ -45,8 +46,8 @@ Everything else (§A/§B) is listed below with what it needs.
 
 ### Notes
 
-1. **LongBench (E9).** A long-context multi-doc set stresses the `L*`/context-length story directly.
-   Needs a dataset loader (same pattern as `src/data_v2.py`).
+1. **LongBench 7B.** The 3B configs are complete (n=200); 7B/Q4 is partial and 7B/Q8 not run.
+   Re-running `--datasets longbench` resumes from cache.
 2. **Compressed-context curve.** Partly derivable from the full curve at retained length `L_c`, but the
    proposal asks for it *measured*; cheap as a `--mode scaling_compressed`.
 3. **CPU-cost-term ablation.** `rel_iso` already approximates "cost term off".
@@ -66,13 +67,14 @@ Everything else (§A/§B) is listed below with what it needs.
 
 - **E1** decode scaling to 16K · **E2** ratio grid 0.2/0.4/0.5/0.6/0.8 · **E3** overhead vs savings ·
   **E4** break-even `L*` per model×quant · **E5/E6** full 2×2 (3B/7B × Q4/Q8) · **E7** grounding ·
-  **E9** 2Wiki **+ TriviaQA (all 4 configs)** · **§17** coverage / reorder / λ / scorer ablation ·
+  **E9** 2Wiki **+ TriviaQA (all 4 configs) + LongBench (3B)** · **§17** coverage / reorder / λ / scorer ablation ·
   **§13** BM25 vs dense vs hybrid (**4 configs × 3 datasets**) · **H5** prefix/KV reuse ·
   LLMLingua-2 baseline · paired bootstrap + McNemar + Holm.
 - **Statistical power** — all 4 configs at n=200 flipped the central claims: 3B/Q4 compression
   significantly **helps** (HotpotQA DECAF λ6 p=0.009), 7B/Q4 significantly **hurts** (p=0.019).
-- **Dataset dependence** — on single-hop TriviaQA, compression helps the 3B (+0.081, p=0.002) and is
-  **null for the 7B** (≈0, n=200). So the 7B harm is **multi-hop-specific**, not universal.
+- **Task dependence** — helps on HotpotQA-3B and TriviaQA-3B, neutral on 2Wiki, hurts on HotpotQA-7B,
+  and **hurts long-context LongBench (both 3B configs, p<0.001)**. Compression's value is strongly
+  task/context-dependent.
 - **Generation-length robustness:** N_out swept to 512; decode share plateaus (model hits EOS ~40–64 tok).
 - **Paper drafts:** `results_v2/PAPER_{ABSTRACT,INTRO_RELATED,METHODS,RESULTS,DISCUSSION}.md` +
   `CITATION_CHECKLIST.md`.
