@@ -117,6 +117,47 @@ def _build_trivia(ds, idx: List[int], max_sent: int = 20) -> List[Example]:
     return examples
 
 
+def _build_longbench(ds, idx: List[int], chunk_sent: int = 6, max_sent: int = 600) -> List[Example]:
+    """LongBench (multi-document QA): the provided context is one long concatenated string.
+    We chunk it into ~`chunk_sent`-sentence segments (the paraphrase of retrieved paragraphs)
+    and take gold evidence from answer-bearing sentences."""
+    examples: List[Example] = []
+    for i in idx:
+        row = ds[i]
+        sents = contexts.split_sentences(row.get("context") or "")[:max_sent]
+        paras: List[Paragraph] = []
+        for j in range(0, len(sents), chunk_sent):
+            seg = sents[j:j + chunk_sent]
+            if seg:
+                paras.append(Paragraph(f"seg{len(paras)}", seg))
+        if not paras:
+            continue
+        answers = row.get("answers") or []
+        if isinstance(answers, str):
+            answers = [answers]
+        aliases = [str(a).strip().lower() for a in answers if str(a).strip()]
+        support: Dict[str, List[int]] = {}
+        gold_titles: List[str] = []
+        for p in paras:
+            hits = [j for j, s in enumerate(p.sentences) if any(a in s.lower() for a in aliases)]
+            if hits:
+                support[p.title] = hits
+                gold_titles.append(p.title)
+        examples.append(
+            Example(
+                qid=str(row.get("_id", i)),
+                question=str(row.get("question") or row.get("input") or ""),
+                answer=str(answers[0]) if answers else "",
+                paragraphs=paras,
+                gold_titles=sorted(set(gold_titles)),
+                qtype="multidoc-qa",
+                level="longbench",
+                support_sentences=support,
+            )
+        )
+    return examples
+
+
 def load_examples_v2(spec: dict, seed: int, cache_dir: str) -> List[Example]:
     """Load or materialise a sampled subset for a dataset spec."""
     os.makedirs(cache_dir, exist_ok=True)
@@ -134,6 +175,8 @@ def load_examples_v2(spec: dict, seed: int, cache_dir: str) -> List[Example]:
         # oversample: some questions are dropped (no gold doc / too few documents)
         pool = idx[: min(len(idx), spec["n_questions"] * 5)]
         examples = _build_trivia(ds, pool)[: spec["n_questions"]]
+    elif spec.get("loader") == "longbench":
+        examples = _build_longbench(ds, idx[: spec["n_questions"]])
     else:
         examples = _build_examples(ds, idx[: spec["n_questions"]])
     with open(path, "w") as f:

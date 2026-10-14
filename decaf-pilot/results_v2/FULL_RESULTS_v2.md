@@ -494,15 +494,39 @@ Figures: `fig_v2_h5_prefix.png`, `fig_v2_h5_reuse.png`, `fig_v2_h5_prefetch.png`
 | 3B / Q4_K_M|hotpot|bm25    | 0.262 |        0.515 |      0.12  |      1058 |
 | 3B / Q4_K_M|hotpot|dense   | 0.3   |        0.7   |      0.139 |      1060 |
 | 3B / Q4_K_M|hotpot|hybrid  | 0.31  |        0.733 |      0.143 |       879 |
+| 3B / Q4_K_M|trivia|bm25    | 0.312 |        0.695 |      0.122 |       722 |
+| 3B / Q4_K_M|trivia|dense   | 0.305 |        0.8   |      0.146 |       850 |
+| 3B / Q4_K_M|trivia|hybrid  | 0.301 |        0.8   |      0.146 |       696 |
 | 3B / Q4_K_M|twowiki|bm25   | 0.187 |        0.4   |      0.115 |       961 |
 | 3B / Q4_K_M|twowiki|dense  | 0.275 |        0.567 |      0.115 |      1090 |
 | 3B / Q4_K_M|twowiki|hybrid | 0.304 |        0.567 |      0.108 |       882 |
+| 3B / Q8_0|hotpot|bm25      | 0.222 |        0.515 |      0.12  |      1806 |
+| 3B / Q8_0|hotpot|dense     | 0.313 |        0.7   |      0.139 |      1654 |
+| 3B / Q8_0|hotpot|hybrid    | 0.32  |        0.733 |      0.143 |      1519 |
+| 3B / Q8_0|trivia|bm25      | 0.26  |        0.695 |      0.122 |      1117 |
+| 3B / Q8_0|trivia|dense     | 0.254 |        0.8   |      0.146 |      1333 |
+| 3B / Q8_0|trivia|hybrid    | 0.254 |        0.8   |      0.146 |      1087 |
+| 3B / Q8_0|twowiki|bm25     | 0.126 |        0.4   |      0.115 |      1857 |
+| 3B / Q8_0|twowiki|dense    | 0.159 |        0.567 |      0.115 |      1943 |
+| 3B / Q8_0|twowiki|hybrid   | 0.148 |        0.567 |      0.108 |      1874 |
 | 7B / Q4_K_M|hotpot|bm25    | 0.443 |        0.515 |      0.12  |       874 |
 | 7B / Q4_K_M|hotpot|dense   | 0.587 |        0.7   |      0.139 |       855 |
 | 7B / Q4_K_M|hotpot|hybrid  | 0.589 |        0.733 |      0.143 |       706 |
+| 7B / Q4_K_M|trivia|bm25    | 0.547 |        0.695 |      0.122 |       852 |
+| 7B / Q4_K_M|trivia|dense   | 0.596 |        0.8   |      0.146 |      1050 |
+| 7B / Q4_K_M|trivia|hybrid  | 0.596 |        0.8   |      0.146 |       676 |
 | 7B / Q4_K_M|twowiki|bm25   | 0.228 |        0.4   |      0.115 |      1476 |
 | 7B / Q4_K_M|twowiki|dense  | 0.263 |        0.567 |      0.115 |      1614 |
 | 7B / Q4_K_M|twowiki|hybrid | 0.315 |        0.567 |      0.108 |      1744 |
+| 7B / Q8_0|hotpot|bm25      | 0.445 |        0.515 |      0.12  |      1436 |
+| 7B / Q8_0|hotpot|dense     | 0.546 |        0.7   |      0.139 |      1249 |
+| 7B / Q8_0|hotpot|hybrid    | 0.674 |        0.733 |      0.143 |       956 |
+| 7B / Q8_0|trivia|bm25      | 0.545 |        0.695 |      0.122 |      1062 |
+| 7B / Q8_0|trivia|dense     | 0.638 |        0.8   |      0.146 |      1110 |
+| 7B / Q8_0|trivia|hybrid    | 0.638 |        0.8   |      0.146 |       943 |
+| 7B / Q8_0|twowiki|bm25     | 0.24  |        0.4   |      0.115 |      2389 |
+| 7B / Q8_0|twowiki|dense    | 0.31  |        0.567 |      0.115 |      2170 |
+| 7B / Q8_0|twowiki|hybrid   | 0.324 |        0.567 |      0.108 |      2323 |
 
 Figures: `fig_v2_retrieval.png`, `fig_v2_retrieval_pareto.png`.
 

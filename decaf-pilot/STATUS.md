@@ -3,7 +3,7 @@
 **Date:** 2026-10-12
 **Scope:** Phase 1 (v2) — **full experiments** for the DECAF proposal
 (*"When Does Context Compression Accelerate CPU RAG? A Decode-Centric Study"*).
-**State:** ✅ Complete, reproducible end-to-end. 17,460 runs across 4 model×quant configs
+**State:** ✅ Complete, reproducible end-to-end. 18,900 runs across 4 model×quant configs
 (3B/7B × Q4_K_M/Q8_0) × **3 datasets** (HotpotQA, 2Wiki, TriviaQA), all at n=200; 41 figures +
 report in `results_v2/`. The Phase-0 pilot is preserved (§3) and superseded.
 
@@ -23,7 +23,7 @@ Location: `decaf-pilot/`
 | Generation sweep | — | N_out ∈ {16, 64, 128, 256, 512} (crossover) |
 | Secondary (H5) | — | prefix/KV reuse + prefetch |
 | Statistics | — | bootstrap CI · McNemar · Holm |
-| Runs | 220 | **17,460** |
+| Runs | 220 | **18,900** |
 | Deliverables | `results/` | `results_v2/` (41 figures, `FULL_RESULTS_v2.md`) |
 
 ---
@@ -40,9 +40,9 @@ study and an H5 micro-study. All runs are cached (resumable, append-only JSONL);
 | Scaling (E1/E8) | 56 | TPOT(L)/prefill(L) at L ∈ {256 … 16384}, 2 reps × 4 configs |
 | Crossover (H1) | 60 | decode share vs N_out ∈ {16,64,128,256,512} at L ∈ {512,2048,8192} × 4 configs |
 | Compression (E2–E7, E9) | 16,560 | 4 configs × 3 datasets × 200 q × methods (+ n=30 extras) |
-| Retrieval modes (§13) | 720 | BM25 vs dense vs hybrid, 2 models × 2 datasets × 3 methods |
+| Retrieval modes (§13) | 2,160 | BM25 vs dense vs hybrid, 4 configs × 3 datasets × 3 methods |
 | H5 secondary | 64 | cold/warm/partial TTFT prefix-cache study × 4 configs × 2 lengths |
-| **Total** | **17,460** | 3B/7B × Q4_K_M/Q8_0 |
+| **Total** | **18,900** | 3B/7B × Q4_K_M/Q8_0 |
 
 **New code (all additive, `*_v2`):**
 
@@ -106,9 +106,9 @@ longer trivial: compression is a net latency loss below it, a net win above.
 - **§17 — scorer ablation (cross-encoder vs BM25):** BM25 costs ~1.9 ms vs the cross-encoder's ~989 ms,
   yet the CE buys only small gains (7B Q8: F1 0.556 vs 0.539, gold-in-ev 0.633 vs 0.600) — on CPU the
   CE's ~500× cost rarely pays for itself.
-- **§13 — retrieval modes:** **hybrid (BM25 + dense RRF) beats BM25 on both quality and grounding** in
-  most cells — 7B/Q4 HotpotQA F1 0.522 → 0.587 (dense) → **0.589 (hybrid)**, gold-in-ev 0.633 → 0.700 →
-  0.733; 2Wiki 7B/Q4 0.274 → 0.315. Retrieval quality moves grounding more than compression does.
+- **§13 — retrieval modes (4 configs × 3 datasets):** **hybrid (BM25 + dense RRF) ≥ dense ≥ BM25** in
+  most cells — e.g. 7B/Q8 HotpotQA F1 0.445 → 0.546 (dense) → **0.674 (hybrid)**; 7B/Q4 2Wiki
+  0.228 → **0.315**. Retrieval quality often moves the result more than the compression policy.
 - **Scale-up to n=200 (all 4 configs) — power flips the central claims:**
   - **3B/Q4:** compression **significantly helps** (DECAF λ6 ΔF1 +0.077, p=0.009; fixed-50% +0.073, p=0.005;
     fixed-20% +0.095, p=0.001) where n=30 showed nothing.
@@ -169,11 +169,11 @@ are not significant after correction — reported honestly, with the Pareto fron
 
 ### 1.5 What's next / remaining
 
-> Full prioritized list (10 experiments remaining, 2 blocked) in [`remaining.md`](./remaining.md).
+> Full prioritized list (7 experiments remaining, 2 blocked) in [`remaining.md`](./remaining.md).
 
 - [ ] 32K context points (needs a longer-context model — Qwen2.5 caps at 32,768, so a ~32K target truncates).
 - [ ] Perception Compressor baseline (or state the compute barrier).
-- [ ] Energy / RAPL-style telemetry (not exposed on this macOS box) and achieved-bandwidth vs roofline.
+- [ ] Energy / RAPL-style telemetry (not on macOS) and achieved-bandwidth vs roofline.
 - [ ] Citation-correctness grounding where gold citations exist.
 - [ ] LongBench multi-document QA (E9 breadth) — **TriviaQA done** (all 4 configs, n=200); LongBench pending.
 - [x] More queries — **all 4 configs now n=200**. Statistical power flipped the central claims (3B/Q4

@@ -20,6 +20,13 @@ data:
     split: validation
     n_questions: 200
     loader: trivia
+  longbench:
+    tag: longbench
+    hf_name: Xnhyacinth/LongBench
+    hf_config: hotpotqa
+    split: test
+    n_questions: 200
+    loader: longbench
   cache_dir: data_v2
 
 retriever: bm25
@@ -74,7 +81,7 @@ retrieval:
   retrievers: [dense, hybrid]
   dense_model: "BAAI/bge-small-en-v1.5"
   methods: [full, fixed_0.5, decaf_lam6]
-  models: ["qwen2.5:3b-instruct", "qwen2.5:7b-instruct-q4_K_M"]
+  models: ["qwen2.5:3b-instruct", "qwen2.5:3b-instruct-q8_0", "qwen2.5:7b-instruct-q4_K_M", "qwen2.5:7b-instruct-q8_0"]
   n_questions: 30
 
 scorer:

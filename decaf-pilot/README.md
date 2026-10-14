@@ -6,7 +6,7 @@ proposal's empirical backbone directly on this machine (Ollama / llama.cpp, CPU)
 the `TPOT(L)`/`prefill(L)` curves, the **break-even context length `L*`**, the
 quality–latency–grounding Pareto, and a training-free CPU-aware evidence selector.
 
-> **Status:** ✅ v2 complete — **17,460 runs** across 4 model×quant configs and **3 datasets**
+> **Status:** ✅ v2 complete — **18,900 runs** across 4 model×quant configs and **3 datasets**
 > (HotpotQA, 2Wiki, TriviaQA), all at **n=200**; **41 figures** + report in `results_v2/`.
 > The Phase-0 pilot is preserved in `results/` (historical). See `STATUS.md` for full progress.
 
@@ -19,7 +19,7 @@ quality–latency–grounding Pareto, and a training-free CPU-aware evidence sel
 | Scorer | cross-encoder `BAAI/bge-reranker-base` (CPU) |
 | Compressors / baselines | DECAF (λ sweep), fixed-ratio, relevance top-m, **LLMLingua-2**, BM25-scorer variant |
 | Retrieval | BM25 · dense (`BAAI/bge-small-en-v1.5`) · hybrid (RRF) |
-| Runs | scaling 56 · crossover 60 · compression 16,560 · retrieval 720 · H5 64 = **17,460** |
+| Runs | scaling 56 · crossover 60 · compression 16,560 · retrieval 2,160 · H5 64 = **18,900** |
 | Outputs | `results_v2/` — 41 figures, `FULL_RESULTS_v2.md`, `summary_v2.json` |
 
 ## Headline results

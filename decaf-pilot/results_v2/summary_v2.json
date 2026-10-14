@@ -582,6 +582,24 @@
       "retained_ratio": 0.14291745349153867,
       "e2e_ms": 879.1047499998967
     },
+    "3B / Q4_K_M|trivia|bm25": {
+      "f1": 0.3115860295788107,
+      "gold_in_evidence": 0.695,
+      "retained_ratio": 0.1216017693835461,
+      "e2e_ms": 721.7678125002749
+    },
+    "3B / Q4_K_M|trivia|dense": {
+      "f1": 0.30469760631525333,
+      "gold_in_evidence": 0.8,
+      "retained_ratio": 0.14643950627702793,
+      "e2e_ms": 850.4954790005286
+    },
+    "3B / Q4_K_M|trivia|hybrid": {
+      "f1": 0.3005309396485867,
+      "gold_in_evidence": 0.8,
+      "retained_ratio": 0.14643950627702793,
+      "e2e_ms": 696.0975420006434
+    },
     "3B / Q4_K_M|twowiki|bm25": {
       "f1": 0.18667175378004747,
       "gold_in_evidence": 0.4,
@@ -599,6 +617,60 @@
       "gold_in_evidence": 0.5666666666666667,
       "retained_ratio": 0.10835294636284208,
       "e2e_ms": 881.5778539992607
+    },
+    "3B / Q8_0|hotpot|bm25": {
+      "f1": 0.22231415385858558,
+      "gold_in_evidence": 0.515,
+      "retained_ratio": 0.11951726237358176,
+      "e2e_ms": 1805.5622499996389
+    },
+    "3B / Q8_0|hotpot|dense": {
+      "f1": 0.3125984063398251,
+      "gold_in_evidence": 0.7,
+      "retained_ratio": 0.1385489211943792,
+      "e2e_ms": 1654.0883540001232
+    },
+    "3B / Q8_0|hotpot|hybrid": {
+      "f1": 0.3202893868568925,
+      "gold_in_evidence": 0.7333333333333333,
+      "retained_ratio": 0.14291745349153867,
+      "e2e_ms": 1518.687083000259
+    },
+    "3B / Q8_0|trivia|bm25": {
+      "f1": 0.2595704624523596,
+      "gold_in_evidence": 0.695,
+      "retained_ratio": 0.1216017693835461,
+      "e2e_ms": 1117.4848959999508
+    },
+    "3B / Q8_0|trivia|dense": {
+      "f1": 0.25353386265150973,
+      "gold_in_evidence": 0.8,
+      "retained_ratio": 0.14643950627702793,
+      "e2e_ms": 1332.83704150017
+    },
+    "3B / Q8_0|trivia|hybrid": {
+      "f1": 0.25353386265150973,
+      "gold_in_evidence": 0.8,
+      "retained_ratio": 0.14643950627702793,
+      "e2e_ms": 1086.7820210005448
+    },
+    "3B / Q8_0|twowiki|bm25": {
+      "f1": 0.12567238365907246,
+      "gold_in_evidence": 0.4,
+      "retained_ratio": 0.11466656246432731,
+      "e2e_ms": 1857.0682079989638
+    },
+    "3B / Q8_0|twowiki|dense": {
+      "f1": 0.15947658025407388,
+      "gold_in_evidence": 0.5666666666666667,
+      "retained_ratio": 0.11483321147047443,
+      "e2e_ms": 1943.4290834997228
+    },
+    "3B / Q8_0|twowiki|hybrid": {
+      "f1": 0.14753790164872863,
+      "gold_in_evidence": 0.5666666666666667,
+      "retained_ratio": 0.10835294636284208,
+      "e2e_ms": 1874.3508330007899
     },
     "7B / Q4_K_M|hotpot|bm25": {
       "f1": 0.4432048564304305,
@@ -618,6 +690,24 @@
       "retained_ratio": 0.14291745349153867,
       "e2e_ms": 706.4979789993231
     },
+    "7B / Q4_K_M|trivia|bm25": {
+      "f1": 0.5467118028107159,
+      "gold_in_evidence": 0.695,
+      "retained_ratio": 0.1216017693835461,
+      "e2e_ms": 851.5929580007651
+    },
+    "7B / Q4_K_M|trivia|dense": {
+      "f1": 0.5963492063492063,
+      "gold_in_evidence": 0.8,
+      "retained_ratio": 0.14643950627702793,
+      "e2e_ms": 1050.236020497323
+    },
+    "7B / Q4_K_M|trivia|hybrid": {
+      "f1": 0.5963492063492063,
+      "gold_in_evidence": 0.8,
+      "retained_ratio": 0.14643950627702793,
+      "e2e_ms": 675.8668954989844
+    },
     "7B / Q4_K_M|twowiki|bm25": {
       "f1": 0.22830872793496426,
       "gold_in_evidence": 0.4,
@@ -635,6 +725,60 @@
       "gold_in_evidence": 0.5666666666666667,
       "retained_ratio": 0.10835294636284208,
       "e2e_ms": 1744.2359374981606
+    },
+    "7B / Q8_0|hotpot|bm25": {
+      "f1": 0.44538816017949867,
+      "gold_in_evidence": 0.515,
+      "retained_ratio": 0.11951726237358176,
+      "e2e_ms": 1436.2358335019962
+    },
+    "7B / Q8_0|hotpot|dense": {
+      "f1": 0.545759144237405,
+      "gold_in_evidence": 0.7,
+      "retained_ratio": 0.1385489211943792,
+      "e2e_ms": 1248.5632709995116
+    },
+    "7B / Q8_0|hotpot|hybrid": {
+      "f1": 0.6743794128576738,
+      "gold_in_evidence": 0.7333333333333333,
+      "retained_ratio": 0.14291745349153867,
+      "e2e_ms": 955.70937499906
+    },
+    "7B / Q8_0|trivia|bm25": {
+      "f1": 0.5447142249012958,
+      "gold_in_evidence": 0.695,
+      "retained_ratio": 0.1216017693835461,
+      "e2e_ms": 1061.7068749997998
+    },
+    "7B / Q8_0|trivia|dense": {
+      "f1": 0.6381481481481482,
+      "gold_in_evidence": 0.8,
+      "retained_ratio": 0.14643950627702793,
+      "e2e_ms": 1110.4272499997023
+    },
+    "7B / Q8_0|trivia|hybrid": {
+      "f1": 0.6381481481481482,
+      "gold_in_evidence": 0.8,
+      "retained_ratio": 0.14643950627702793,
+      "e2e_ms": 943.2624585024314
+    },
+    "7B / Q8_0|twowiki|bm25": {
+      "f1": 0.239862330415418,
+      "gold_in_evidence": 0.4,
+      "retained_ratio": 0.11466656246432731,
+      "e2e_ms": 2389.2595419999907
+    },
+    "7B / Q8_0|twowiki|dense": {
+      "f1": 0.3102126022126023,
+      "gold_in_evidence": 0.5666666666666667,
+      "retained_ratio": 0.11483321147047443,
+      "e2e_ms": 2169.7166664998804
+    },
+    "7B / Q8_0|twowiki|hybrid": {
+      "f1": 0.3237277537277537,
+      "gold_in_evidence": 0.5666666666666667,
+      "retained_ratio": 0.10835294636284208,
+      "e2e_ms": 2322.7929169988784
     }
   },
   "break_even": {
