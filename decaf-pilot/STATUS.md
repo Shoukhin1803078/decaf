@@ -3,8 +3,8 @@
 **Date:** 2026-10-12
 **Scope:** Phase 1 (v2) — **full experiments** for the DECAF proposal
 (*"When Does Context Compression Accelerate CPU RAG? A Decode-Centric Study"*).
-**State:** ✅ Complete, reproducible end-to-end. 21,420 runs across 4 model×quant configs
-(3B/7B × Q4_K_M/Q8_0) × **4 datasets** (HotpotQA, 2Wiki, TriviaQA, LongBench), 3B at n=200; 41 figures
+**State:** ✅ Complete, reproducible end-to-end. 23,700 runs across 4 model×quant configs
+(3B/7B × Q4_K_M/Q8_0) × **4 datasets** (HotpotQA, 2Wiki, TriviaQA, LongBench), all at n=200; 41 figures
 + report in `results_v2/`. The Phase-0 pilot is preserved (§3) and superseded.
 
 Location: `decaf-pilot/`
@@ -23,7 +23,7 @@ Location: `decaf-pilot/`
 | Generation sweep | — | N_out ∈ {16, 64, 128, 256, 512} (crossover) |
 | Secondary (H5) | — | prefix/KV reuse + prefetch |
 | Statistics | — | bootstrap CI · McNemar · Holm |
-| Runs | 220 | **21,420** |
+| Runs | 220 | **23,700** |
 | Deliverables | `results/` | `results_v2/` (41 figures, `FULL_RESULTS_v2.md`) |
 
 ---
@@ -39,10 +39,10 @@ study and an H5 micro-study. All runs are cached (resumable, append-only JSONL);
 |---|---:|---|
 | Scaling (E1/E8) | 56 | TPOT(L)/prefill(L) at L ∈ {256 … 16384}, 2 reps × 4 configs |
 | Crossover (H1) | 60 | decode share vs N_out ∈ {16,64,128,256,512} at L ∈ {512,2048,8192} × 4 configs |
-| Compression (E2–E7, E9) | 19,080 | 4 configs × 4 datasets × 200 q × methods (+ n=30 extras) |
+| Compression (E2–E7, E9) | 21,360 | 4 configs × 4 datasets × 200 q × methods (+ n=30 extras) |
 | Retrieval modes (§13) | 2,160 | BM25 vs dense vs hybrid, 4 configs × 3 datasets × 3 methods |
 | H5 secondary | 64 | cold/warm/partial TTFT prefix-cache study × 4 configs × 2 lengths |
-| **Total** | **21,420** | 3B/7B × Q4_K_M/Q8_0 |
+| **Total** | **23,700** | 3B/7B × Q4_K_M/Q8_0 |
 
 **New code (all additive, `*_v2`):**
 
@@ -114,10 +114,11 @@ longer trivial: compression is a net latency loss below it, a net win above.
     fixed-20% +0.095, p=0.001) where n=30 showed nothing.
   - **7B/Q4:** compression **significantly hurts** (DECAF λ6 −0.092, p=0.019; rel_iso −0.092, p=0.056;
     no-cov −0.085, p=0.025) — a **significant model-size interaction** (E6/RQ4) that n=30 could not resolve.
-- **E9 — long-context multi-doc (LongBench hotpotqa, 3B n=200):** compression **significantly hurts** —
-  3B/Q4 DECAF λ6 ΔF1 **−0.146** (Holm p<0.001), all methods −0.12…−0.17; gold-in-ev 0.64 → 0.38. When
-  the evidence is spread across a long context, aggressive selection drops it. This is the *opposite*
-  regime from TriviaQA — compression's value is **strongly task/context-dependent**.
+- **E9 — long-context multi-doc (LongBench hotpotqa, n=200, all 4 configs):** compression
+  **significantly hurts every config** (DECAF λ6 ΔF1 −0.146 (3B/Q4), −0.174 (3B/Q8), −0.145 (7B/Q4),
+  −0.136 (7B/Q8); all Holm p<0.001; gold-in-ev 0.64 → 0.38). When the evidence is spread across a long
+  context, aggressive selection drops it. This is a **uniform** regime, opposite to the short-context
+  cases — compression's value is **strongly task/context-dependent**.
 - **E9 — single-hop (TriviaQA, n=200, all 4 configs):** compression **helps 3B/Q4** (DECAF λ6 ΔF1
   **+0.081**, Holm p=0.002) and is **null for the 7B** (7B/Q4 +0.001, 7B/Q8 +0.003, n.s.). So the
   "compression hurts the 7B" effect is **multi-hop-specific**: on single-hop it is *neutral*, not
@@ -179,7 +180,7 @@ are not significant after correction — reported honestly, with the Pareto fron
 - [ ] Perception Compressor baseline (or state the compute barrier).
 - [ ] Energy / RAPL-style telemetry (not on macOS) and achieved-bandwidth vs roofline.
 - [ ] Citation-correctness grounding where gold citations exist.
-- [x] LongBench multi-document QA (E9 breadth) — **3B done** (n=200); 7B partial (resumable).
+- [x] LongBench multi-document QA (E9 breadth) — **all 4 configs, n=200**. Significantly hurts every config.
 - [x] More queries — **all 4 configs now n=200**. Statistical power flipped the central claims (3B/Q4
   compression significantly helps, p≤0.02; 7B/Q4 significantly hurts, p=0.019).
 - [ ] Paper-ready "Preliminary Results" section from `results_v2/`.

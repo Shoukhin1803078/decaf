@@ -6,8 +6,8 @@ proposal's empirical backbone directly on this machine (Ollama / llama.cpp, CPU)
 the `TPOT(L)`/`prefill(L)` curves, the **break-even context length `L*`**, the
 quality–latency–grounding Pareto, and a training-free CPU-aware evidence selector.
 
-> **Status:** ✅ v2 complete — **21,420 runs** across 4 model×quant configs and **4 datasets**
-> (HotpotQA, 2Wiki, TriviaQA, LongBench), 3B at **n=200**; **41 figures** + report in `results_v2/`.
+> **Status:** ✅ v2 complete — **23,700 runs** across 4 model×quant configs and **4 datasets**
+> (HotpotQA, 2Wiki, TriviaQA, LongBench), all at **n=200**; **41 figures** + report in `results_v2/`.
 > The Phase-0 pilot is preserved in `results/` (historical). See `STATUS.md` for full progress.
 
 ## At a glance
@@ -19,7 +19,7 @@ quality–latency–grounding Pareto, and a training-free CPU-aware evidence sel
 | Scorer | cross-encoder `BAAI/bge-reranker-base` (CPU) |
 | Compressors / baselines | DECAF (λ sweep), fixed-ratio, relevance top-m, **LLMLingua-2**, BM25-scorer variant |
 | Retrieval | BM25 · dense (`BAAI/bge-small-en-v1.5`) · hybrid (RRF) |
-| Runs | scaling 56 · crossover 60 · compression 19,080 · retrieval 2,160 · H5 64 = **21,420** |
+| Runs | scaling 56 · crossover 60 · compression 21,360 · retrieval 2,160 · H5 64 = **23,700** |
 | Outputs | `results_v2/` — 41 figures, `FULL_RESULTS_v2.md`, `summary_v2.json` |
 
 ## Headline results
@@ -53,9 +53,9 @@ quality–latency–grounding Pareto, and a training-free CPU-aware evidence sel
   ΔF1 +0.081, Holm p=0.002) but is **null for the 7B** (≈0, n.s.) — so it doesn't *hurt* the 7B there.
   The "compression hurts the 7B" effect is therefore **multi-hop-specific**, not universal.
 - **Task dependence — long context (E9):** on **LongBench** (long multi-document context) compression
-  **significantly hurts even the 3B** (DECAF λ6 ΔF1 −0.146, Holm p<0.001) — the evidence is spread
-  across the long context and aggressive selection drops it. So compression's value is **strongly
-  task/context-dependent** (helps: HotpotQA-3B, TriviaQA-3B / hurts: HotpotQA-7B, LongBench).
+  **significantly hurts every config** (ΔF1 −0.14…−0.17, all p<0.001) — the evidence is spread across
+  the long context and aggressive selection drops it. So compression's value is **strongly
+  task/context-dependent** (helps: HotpotQA-3B, TriviaQA-3B · neutral: 2Wiki · hurts: HotpotQA-7B, LongBench).
 - **LLMLingua-2** costs more to run than the cross-encoder and its S_net trails DECAF's.
 
 Absolute latencies are machine-specific; the **shapes** (prefill-dominated, grounding cost,

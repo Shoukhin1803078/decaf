@@ -16,7 +16,7 @@ deployments without a GPU run on CPU, where the cost profile is different and, w
 the conclusion. We present a controlled characterization of **when retrieved-context compression
 actually pays off on CPU** for small, quantized LLMs. Using a staged, fully-instrumented harness
 (4 model×quantization configs: Qwen2.5 3B/7B in Q4_K_M/Q8_0; four benchmarks — multi-hop,
-single-hop and long-context; 200 questions each; 21,420 runs), we separate retrieval, compression,
+single-hop and long-context; 200 questions each; 23,700 runs), we separate retrieval, compression,
 prefill and decode. We find that on CPU
 **prefill — not decode — dominates** end-to-end latency (prefill ≈ 5–11 ms/token while per-token decode
 is nearly flat in context length), so compression's benefit is in time-to-first-token, and the
@@ -26,7 +26,8 @@ only above a break-even context length `L*` (228–312 tokens)** — a threshold
 net speedup). With paired statistics, compression **significantly helps** the 3B model (ΔF1 +0.077,
 Holm p = 0.009) yet **significantly hurts** the 7B model (ΔF1 −0.092, p = 0.019) on multi-hop
 HotpotQA — while on single-hop TriviaQA it is **neutral for the 7B** (ΔF1 ≈ 0), so the size
-interaction is **dataset-dependent**. **Grounding degrades monotonically** with compression across datasets. Hybrid
+interaction is **dataset-dependent**; and on long-context LongBench it **hurts every config**
+(ΔF1 −0.14…−0.17, p<0.001). **Grounding degrades monotonically** with compression across datasets. Hybrid
 retrieval improves both quality and
 grounding and can matter more than the compression policy, quantization is second-order, and
 llama.cpp prefix/KV reuse cuts TTFT by ~99% because prefill dominates. We release the harness,

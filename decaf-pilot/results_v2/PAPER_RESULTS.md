@@ -156,12 +156,14 @@ small-sample noise.*) *Figures:* TriviaQA points appear in `fig_v2_pareto_all`,
 
 ### 3.5 Long-context multi-document (LongBench)
 
-On a long-context multi-document set, compression **hurts** — and significantly so even for the 3B:
+On a long-context multi-document set, compression **hurts** — and significantly so for **every** config:
 
 | config | full F1 | DECAF λ6 F1 | ΔF1 (Holm p) | gold-in-ev (full → comp) |
 |---|---:|---:|---|---:|
 | 3B/Q4 | 0.302 | 0.156 | **−0.146 (<0.001)** | 0.640 → 0.380 |
 | 3B/Q8 | 0.303 | 0.129 | **−0.174 (<0.001)** | 0.640 → 0.380 |
+| 7B/Q4 | 0.479 | 0.334 | **−0.145 (<0.001)** | 0.640 → 0.380 |
+| 7B/Q8 | 0.474 | 0.339 | **−0.136 (<0.001)** | 0.640 → 0.380 |
 
 All methods are negative (−0.12…−0.17), because when the answer evidence is spread across a long
 context, aggressive selection removes it (gold-in-evidence 0.64 → 0.38). This is the **opposite regime**
