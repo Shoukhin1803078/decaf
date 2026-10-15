@@ -112,8 +112,9 @@ We report the fitted `TPOT(L)` and `T_prefill(L)` curves and the derived quantit
 | Net speedup | `S_net = T_baseline / (T_compress + T_prefill^c + T_decode^c)` |
 | Break-even length | `L* = L_c + T_compress / (b_prefill + N_out · b_TPOT)` |
 
-System telemetry: peak RSS (sampled via `psutil`), tokens/s, and per-stage timings. Energy / achieved
-memory bandwidth are not exposed on the host OS and are treated as out of scope (noted in Limitations).
+System telemetry: peak RSS and **CPU utilization** (sampled via `psutil`), tokens/s, per-stage timings,
+and an **achieved decode-bandwidth** proxy (`model_bytes × tokens/s`). Energy is not exposed on the host
+OS and is treated as out of scope (noted in Limitations).
 
 ## 3.8 Grounding evaluation
 

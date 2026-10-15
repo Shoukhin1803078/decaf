@@ -123,6 +123,8 @@ def main() -> None:
                                  ["model", "mode", "L", "rep"]).all())
     scc = pd.DataFrame(JsonlCache(os.path.join(ROOT, cfg["paths"]["scaling_compressed_cache"]),
                                   ["model", "L", "ratio", "rep"]).all())
+    e8 = pd.DataFrame(JsonlCache(os.path.join(ROOT, cfg["paths"]["e8_cache"]),
+                                 ["model", "L", "rep"]).all())
     cx = pd.DataFrame(JsonlCache(os.path.join(ROOT, cfg["paths"]["crossover_cache"]),
                                  ["model", "L", "num_predict", "rep"]).all())
     cp = pd.DataFrame(JsonlCache(os.path.join(ROOT, cfg["paths"]["compress_cache"]),
@@ -280,6 +282,41 @@ def main() -> None:
                 "median_prompt_tokens": float(g["prompt_tokens"].median()),
                 "median_tpot_ms": float(g["tpot_ms"].median()),
                 "median_prefill_ms": float(g["prefill_ms"].median())}
+
+    # ================= E8 telemetry (CPU% / bandwidth) =================
+    if not e8.empty:
+        def fig_e8():
+            fig, ax = plt.subplots(1, 3, figsize=(14, 3.8))
+            for m in models:
+                g = e8[e8["model"] == m["name"]].groupby("L").agg(
+                    cpu=("cpu_pct", "mean"), bw=("decode_bw_gb_s", "median"),
+                    toks=("decode_tok_s", "median")).reset_index()
+                if g.empty:
+                    continue
+                ax[0].plot(g["L"], g["cpu"], "o-", color=mcolor[m["label"]], label=m["label"])
+                ax[1].plot(g["L"], g["bw"], "o-", color=mcolor[m["label"]])
+                ax[2].plot(g["L"], g["toks"], "o-", color=mcolor[m["label"]])
+            ax[0].set_ylabel("mean CPU utilization (%)"); ax[0].set_title("CPU utilization")
+            ax[1].set_ylabel("GB/s"); ax[1].set_title("achieved decode bandwidth (proxy)")
+            ax[2].set_ylabel("tokens/s"); ax[2].set_title("decode throughput")
+            for a in ax:
+                a.set_xlabel("context L (tokens)")
+            ax[0].legend(fontsize=7)
+            fig.suptitle("E8: CPU / achieved-weight-bandwidth / throughput vs context", y=1.03)
+            fig.tight_layout(); fig.savefig(os.path.join(out, "fig_v2_e8_telemetry.png"), bbox_inches="tight"); plt.close(fig)
+            summary["figures"].append("fig_v2_e8_telemetry.png")
+        _safe("e8", fig_e8, log)
+
+        summary["e8_telemetry"] = {}
+        for m in models:
+            g = e8[e8["model"] == m["name"]]
+            if g.empty:
+                continue
+            summary["e8_telemetry"][m["label"]] = {
+                "cpu_pct_mean": float(g["cpu_pct"].mean()),
+                "decode_bw_gb_s_median": float(g["decode_bw_gb_s"].median()),
+                "decode_tok_s_median": float(g["decode_tok_s"].median()),
+                "model_size_gb": float(g["model_size_gb"].median())}
 
     # ================= crossover (H1) =================
     if not cx.empty:

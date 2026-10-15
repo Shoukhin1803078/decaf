@@ -13,6 +13,7 @@
     "fig_v2_scaling_peak_rss.png",
     "fig_v2_scaling_panel.png",
     "fig_v2_scaling_compressed.png",
+    "fig_v2_e8_telemetry.png",
     "fig_v2_crossover_decode_share.png",
     "fig_v2_crossover_length.png",
     "fig_v2_h5_prefix.png",
@@ -530,6 +531,32 @@
       "median_prompt_tokens": 488.0,
       "median_tpot_ms": 140.74196875,
       "median_prefill_ms": 3521.7745
+    }
+  },
+  "e8_telemetry": {
+    "3B / Q4_K_M": {
+      "cpu_pct_mean": 12.103961551049608,
+      "decode_bw_gb_s_median": 49.126197818084094,
+      "decode_tok_s_median": 25.455143458075874,
+      "model_size_gb": 1.929912432
+    },
+    "3B / Q8_0": {
+      "cpu_pct_mean": 15.392770545601591,
+      "decode_bw_gb_s_median": 52.3211816395946,
+      "decode_tok_s_median": 15.924945888500874,
+      "model_size_gb": 3.285485678
+    },
+    "7B / Q4_K_M": {
+      "cpu_pct_mean": 14.753501525223022,
+      "decode_bw_gb_s_median": 54.68250729491699,
+      "decode_tok_s_median": 11.676593541458429,
+      "model_size_gb": 4.683087332
+    },
+    "7B / Q8_0": {
+      "cpu_pct_mean": 18.0846339997121,
+      "decode_bw_gb_s_median": 56.52629136445661,
+      "decode_tok_s_median": 6.979813459935491,
+      "model_size_gb": 8.098538978
     }
   },
   "h5_prefix": {

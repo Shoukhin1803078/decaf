@@ -3,8 +3,8 @@
 **Date:** 2026-10-12
 **Scope:** Phase 1 (v2) — **full experiments** for the DECAF proposal
 (*"When Does Context Compression Accelerate CPU RAG? A Decode-Centric Study"*).
-**State:** ✅ Complete, reproducible end-to-end. 23,748 runs across 4 model×quant configs
-(3B/7B × Q4_K_M/Q8_0) × **4 datasets** (HotpotQA, 2Wiki, TriviaQA, LongBench), all at n=200; 42 figures
+**State:** ✅ Complete, reproducible end-to-end. 23,772 runs across 4 model×quant configs
+(3B/7B × Q4_K_M/Q8_0) × **4 datasets** (HotpotQA, 2Wiki, TriviaQA, LongBench), all at n=200; 43 figures
 + report in `results_v2/`. The Phase-0 pilot is preserved (§3) and superseded.
 
 Location: `decaf-pilot/`
@@ -23,8 +23,8 @@ Location: `decaf-pilot/`
 | Generation sweep | — | N_out ∈ {16, 64, 128, 256, 512} (crossover) |
 | Secondary (H5) | — | prefix/KV reuse + prefetch |
 | Statistics | — | bootstrap CI · McNemar · Holm |
-| Runs | 220 | **23,748** |
-| Deliverables | `results/` | `results_v2/` (42 figures, `FULL_RESULTS_v2.md`) |
+| Runs | 220 | **23,772** |
+| Deliverables | `results/` | `results_v2/` (43 figures, `FULL_RESULTS_v2.md`) |
 
 ---
 
@@ -42,8 +42,9 @@ study and an H5 micro-study. All runs are cached (resumable, append-only JSONL);
 | Crossover (H1) | 60 | decode share vs N_out ∈ {16,64,128,256,512} at L ∈ {512,2048,8192} × 4 configs |
 | Compression (E2–E7, E9) | 21,360 | 4 configs × 4 datasets × 200 q × methods (+ n=30 extras) |
 | Retrieval modes (§13) | 2,160 | BM25 vs dense vs hybrid, 4 configs × 3 datasets × 3 methods |
+| E8 telemetry | 24 | CPU% + achieved decode bandwidth, 3 lengths × 2 reps × 4 configs |
 | H5 secondary | 64 | cold/warm/partial TTFT prefix-cache study × 4 configs × 2 lengths |
-| **Total** | **23,748** | 3B/7B × Q4_K_M/Q8_0 |
+| **Total** | **23,772** | 3B/7B × Q4_K_M/Q8_0 |
 
 **New code (all additive, `*_v2`):**
 
@@ -57,7 +58,7 @@ study and an H5 micro-study. All runs are cached (resumable, append-only JSONL);
 | `src/llmlingua_v2.py` | LLMLingua-2 external baseline wrapper |
 | `src/h5_v2.py` | H5 prefix/KV-cache + prefetch micro-study |
 | `src/retrieval_v2.py` | BM25 / dense / hybrid retrieval-mode study (§13) |
-| `src/analyze_v2.py` | Phase B: 42 figures, stats, `FULL_RESULTS_v2.md`, `summary_v2.json` |
+| `src/analyze_v2.py` | Phase B: 43 figures, stats, `FULL_RESULTS_v2.md`, `summary_v2.json` |
 | `scripts/run_v2.sh` | end-to-end v2 runner |
 
 ### 1.2 Key results
@@ -125,6 +126,11 @@ longer trivial: compression is a net latency loss below it, a net win above.
   "compression hurts the 7B" effect is **multi-hop-specific**: on single-hop it is *neutral*, not
   harmful — the size interaction is **dataset-dependent**. (At n≈29 the 7B appeared +0.087; the full
   n=200 shows that was small-sample noise.)
+- **E8 — decode is memory-bandwidth-bound.** Sampled CPU utilization during decode is only **12–18%**
+  while achieved weight-streaming bandwidth is **~50–57 GB/s** across all configs — i.e. decode is
+  bandwidth-limited, not compute-limited. This explains both TPOT ≈ model_bytes / BW (larger/Q8 models
+  are proportionally slower per token: 25.5→7.0 tok/s) and why TPOT is nearly flat in context length
+  (the KV cache is small relative to the weights). *Figure:* `fig_v2_e8_telemetry.png`.
 - **Generation-length robustness:** extending N_out to 512 shows the decode share **plateaus** (~0.40 at
   short context) instead of rising — because the model hits **EOS at ~40–64 tokens**, so N_out cannot be
   forced higher. The prefill-dominated result therefore holds for *natural* answer lengths; testing true
@@ -154,7 +160,7 @@ are not significant after correction — reported honestly, with the Pareto fron
 - `PAPER_DISCUSSION.md` — paper-ready **Discussion + Conclusion** (incl. practical guidance).
 - `PAPER_ABSTRACT.md` — **title, abstract, keywords, highlights**.
 - `CITATION_CHECKLIST.md` — claim→source map + bibliography skeleton (fill verified metadata).
-- **42 figures**: scaling (TPOT/prefill/TTFT/E2E/decode-share/RSS/panel), compressed-context curve, crossover,
+- **43 figures**: scaling (TPOT/prefill/TTFT/E2E/decode-share/RSS/panel), compressed-context curve, crossover,
   break-even curves + L* bar + overhead-vs-savings, Pareto (F1×E2E, ×TTFT, ×retained, frontier),
   TTFT-vs-TPOT, grounding, λ-sweep, ablation, E2 ratio grid, §17 scorer ablation, retrieval modes,
   method×model heatmap, dataset comparison, CIs, stats forest, and H5 (prefix/reuse/prefetch).
@@ -179,7 +185,7 @@ are not significant after correction — reported honestly, with the Pareto fron
 
 - [ ] 32K context points (needs a longer-context model — Qwen2.5 caps at 32,768, so a ~32K target truncates).
 - [ ] Perception Compressor baseline (or state the compute barrier).
-- [ ] Energy / RAPL-style telemetry (not on macOS) and achieved-bandwidth vs roofline.
+- [ ] Energy per query (RAPL — **not on macOS**; achieved-bandwidth/CPU-utilization **done**, E8).
 - [ ] Citation-correctness grounding where gold citations exist.
 - [x] LongBench multi-document QA (E9 breadth) — **all 4 configs, n=200**. Significantly hurts every config.
 - [x] More queries — **all 4 configs now n=200**. Statistical power flipped the central claims (3B/Q4

@@ -63,6 +63,11 @@ scaling_compressed:
   replicates: 2
   ratio: 0.25
 
+# E8: CPU utilization + achieved-bandwidth telemetry (roofline)
+e8:
+  lengths: [512, 2048, 8192]
+  replicates: 2
+
 # H1: generation-length crossover sweep (find where decode vs prefill cross)
 crossover:
   lengths: [512, 2048, 8192]
@@ -105,6 +110,7 @@ ollama:
 paths:
   scaling_cache: cache_v2/scaling.jsonl
   scaling_compressed_cache: cache_v2/scaling_compressed.jsonl
+  e8_cache: cache_v2/e8.jsonl
   crossover_cache: cache_v2/crossover.jsonl
   compress_cache: cache_v2/compression.jsonl
   ce_cache: cache_v2/ce_scores

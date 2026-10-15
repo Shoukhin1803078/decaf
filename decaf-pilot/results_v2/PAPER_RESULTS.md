@@ -46,6 +46,13 @@ confirming that `TPOT`/prefill are governed by the **actual token count**, not t
 length. *Figures:* `fig_v2_scaling_tpot/prefill/ttft/e2e/decode_share/panel`,
 `fig_v2_scaling_compressed`, `fig_v2_crossover_*`.
 
+**Roofline / bandwidth (E8).** Sampling CPU utilization during decode gives only **12–18%** while the
+achieved weight-streaming bandwidth is **~50–57 GB/s for every config** — decode is
+**memory-bandwidth-bound, not compute-bound**. This is exactly `TPOT ≈ model_bytes / BW_mem`: 3B/Q4
+streams its 1.9 GB of weights at 25.5 tok/s (~49 GB/s), while 7B/Q8 (8.1 GB) reaches only 7.0 tok/s at
+the same ~56 GB/s. It also explains the near-flat `TPOT(L)`: the KV cache is small relative to the
+weights. *Figure:* `fig_v2_e8_telemetry.png`.
+
 ---
 
 ## 2. Break-even context length `L*` (RQ2 / E4)
