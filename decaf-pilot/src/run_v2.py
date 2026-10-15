@@ -131,6 +131,36 @@ def run_scaling(cfg: dict, client: OllamaClient, model: dict) -> int:
 
 
 # --------------------------------------------------------------------------- #
+# compressed-context scaling (E1: full vs compressed TPOT(L))
+# --------------------------------------------------------------------------- #
+def run_scaling_compressed(cfg: dict, client: OllamaClient, model: dict) -> int:
+    cache = JsonlCache(os.path.join(ROOT, cfg["paths"]["scaling_compressed_cache"]),
+                       ["model", "L", "ratio", "rep"])
+    q = cfg["scaling"]["question"]
+    ratio = cfg["scaling_compressed"]["ratio"]
+    _generate(client, build_prompt(q, ["Warmup."], ["reference"]))
+    jobs = [(L, r) for L in cfg["scaling_compressed"]["lengths"]
+            for r in range(cfg["scaling_compressed"]["replicates"])]
+    n_new = 0
+    for L, r in tqdm(jobs, desc=f"scalingC[{model['label']}]"):
+        if cache.has(model=model["name"], L=L, ratio=ratio, rep=r):
+            continue
+        filler = contexts.filler_sentences(L, seed=cfg["seed"] + r)
+        m = max(1, int(round(len(filler) * ratio)))
+        nonce = f"Run identifier C{L}-{r}-{L * 1000 + r}."
+        ctx = nonce + " " + " ".join(filler[:m])
+        resp = _generate(client, build_prompt(q, [ctx], ["reference"]))
+        cache.put({"model": model["name"], "model_label": model["label"],
+                   "family": model["family"], "quant": model["quant"],
+                   "mode": "scaling_compressed", "L": L, "ratio": ratio, "rep": r,
+                   "kept_sentences": m, "total_sentences": len(filler), "question": q,
+                   "peak_rss_mb": resp["peak_rss_mb"], **_timing(resp),
+                   "raw_response": resp["response"]})
+        n_new += 1
+    return n_new
+
+
+# --------------------------------------------------------------------------- #
 # crossover (generation length)
 # --------------------------------------------------------------------------- #
 def run_crossover(cfg: dict, client: OllamaClient, model: dict) -> int:
@@ -290,7 +320,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default=os.path.join(ROOT, "config_v2.yaml"))
     ap.add_argument("--mode", default="all",
-                    choices=["all", "scaling", "crossover", "compression"])
+                    choices=["all", "scaling", "scaling_compressed", "crossover", "compression"])
     ap.add_argument("--models", default=None, help="comma-separated model names to run")
     ap.add_argument("--datasets", default=None, help="comma-separated dataset tags")
     ap.add_argument("--limit", type=int, default=None, help="override n_questions")
@@ -334,6 +364,8 @@ def main() -> None:
         client = _client_for(cfg, model["name"])
         if args.mode in ("all", "scaling"):
             n += run_scaling(cfg, client, model)
+        if args.mode in ("all", "scaling_compressed"):
+            n += run_scaling_compressed(cfg, client, model)
         if args.mode in ("all", "crossover"):
             n += run_crossover(cfg, client, model)
         if args.mode in ("all", "compression"):

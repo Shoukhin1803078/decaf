@@ -91,7 +91,9 @@ For each (config, dataset, question, method) we build the reader prompt from the
 generate a short answer, then score it. The scaling study uses **controlled-length synthetic
 contexts** (256 → 16,384 target tokens), with a warmup run and a **unique per-run leading nonce** that
 defeats llama.cpp's cross-run prefix/KV cache (otherwise prefill appears near-free). The
-**generation-length crossover** repeats this at `N_out ∈ {16, 64, 128, 256, 512}`.
+**generation-length crossover** repeats this at `N_out ∈ {16, 64, 128, 256, 512}`. A companion
+**compressed-context sweep** (E1) repeats the scaling measurement with the context reduced to 25% of its
+sentences, yielding the full-vs-compressed `TPOT(L)`/`prefill(L)` curves.
 
 ## 3.7 Measurement framework (Sec. 5 of the proposal)
 

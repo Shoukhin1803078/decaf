@@ -3,8 +3,8 @@
 **Date:** 2026-10-12
 **Scope:** Phase 1 (v2) — **full experiments** for the DECAF proposal
 (*"When Does Context Compression Accelerate CPU RAG? A Decode-Centric Study"*).
-**State:** ✅ Complete, reproducible end-to-end. 23,700 runs across 4 model×quant configs
-(3B/7B × Q4_K_M/Q8_0) × **4 datasets** (HotpotQA, 2Wiki, TriviaQA, LongBench), all at n=200; 41 figures
+**State:** ✅ Complete, reproducible end-to-end. 23,748 runs across 4 model×quant configs
+(3B/7B × Q4_K_M/Q8_0) × **4 datasets** (HotpotQA, 2Wiki, TriviaQA, LongBench), all at n=200; 42 figures
 + report in `results_v2/`. The Phase-0 pilot is preserved (§3) and superseded.
 
 Location: `decaf-pilot/`
@@ -23,8 +23,8 @@ Location: `decaf-pilot/`
 | Generation sweep | — | N_out ∈ {16, 64, 128, 256, 512} (crossover) |
 | Secondary (H5) | — | prefix/KV reuse + prefetch |
 | Statistics | — | bootstrap CI · McNemar · Holm |
-| Runs | 220 | **23,700** |
-| Deliverables | `results/` | `results_v2/` (41 figures, `FULL_RESULTS_v2.md`) |
+| Runs | 220 | **23,748** |
+| Deliverables | `results/` | `results_v2/` (42 figures, `FULL_RESULTS_v2.md`) |
 
 ---
 
@@ -38,11 +38,12 @@ study and an H5 micro-study. All runs are cached (resumable, append-only JSONL);
 | Family | Runs | Description |
 |---|---:|---|
 | Scaling (E1/E8) | 56 | TPOT(L)/prefill(L) at L ∈ {256 … 16384}, 2 reps × 4 configs |
+| Scaling — compressed (E1) | 48 | full vs 25%-compressed context curve, 6 lengths × 2 reps × 4 configs |
 | Crossover (H1) | 60 | decode share vs N_out ∈ {16,64,128,256,512} at L ∈ {512,2048,8192} × 4 configs |
 | Compression (E2–E7, E9) | 21,360 | 4 configs × 4 datasets × 200 q × methods (+ n=30 extras) |
 | Retrieval modes (§13) | 2,160 | BM25 vs dense vs hybrid, 4 configs × 3 datasets × 3 methods |
 | H5 secondary | 64 | cold/warm/partial TTFT prefix-cache study × 4 configs × 2 lengths |
-| **Total** | **23,700** | 3B/7B × Q4_K_M/Q8_0 |
+| **Total** | **23,748** | 3B/7B × Q4_K_M/Q8_0 |
 
 **New code (all additive, `*_v2`):**
 
@@ -56,7 +57,7 @@ study and an H5 micro-study. All runs are cached (resumable, append-only JSONL);
 | `src/llmlingua_v2.py` | LLMLingua-2 external baseline wrapper |
 | `src/h5_v2.py` | H5 prefix/KV-cache + prefetch micro-study |
 | `src/retrieval_v2.py` | BM25 / dense / hybrid retrieval-mode study (§13) |
-| `src/analyze_v2.py` | Phase B: 41 figures, stats, `FULL_RESULTS_v2.md`, `summary_v2.json` |
+| `src/analyze_v2.py` | Phase B: 42 figures, stats, `FULL_RESULTS_v2.md`, `summary_v2.json` |
 | `scripts/run_v2.sh` | end-to-end v2 runner |
 
 ### 1.2 Key results
@@ -153,7 +154,7 @@ are not significant after correction — reported honestly, with the Pareto fron
 - `PAPER_DISCUSSION.md` — paper-ready **Discussion + Conclusion** (incl. practical guidance).
 - `PAPER_ABSTRACT.md` — **title, abstract, keywords, highlights**.
 - `CITATION_CHECKLIST.md` — claim→source map + bibliography skeleton (fill verified metadata).
-- **41 figures**: scaling (TPOT/prefill/TTFT/E2E/decode-share/RSS/panel), crossover,
+- **42 figures**: scaling (TPOT/prefill/TTFT/E2E/decode-share/RSS/panel), compressed-context curve, crossover,
   break-even curves + L* bar + overhead-vs-savings, Pareto (F1×E2E, ×TTFT, ×retained, frontier),
   TTFT-vs-TPOT, grounding, λ-sweep, ablation, E2 ratio grid, §17 scorer ablation, retrieval modes,
   method×model heatmap, dataset comparison, CIs, stats forest, and H5 (prefix/reuse/prefetch).

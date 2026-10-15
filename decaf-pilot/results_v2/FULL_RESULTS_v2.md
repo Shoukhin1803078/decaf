@@ -607,6 +607,7 @@ Figures: `fig_v2_retrieval.png`, `fig_v2_retrieval_pareto.png`.
 - `fig_v2_scaling_decode_share.png`
 - `fig_v2_scaling_peak_rss.png`
 - `fig_v2_scaling_panel.png`
+- `fig_v2_scaling_compressed.png`
 - `fig_v2_crossover_decode_share.png`
 - `fig_v2_crossover_length.png`
 - `fig_v2_h5_prefix.png`

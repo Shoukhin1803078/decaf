@@ -38,8 +38,13 @@ shows the decode share **plateaus** rather than rising (e.g. 3B/Q4 at L≈647: 0
 0.39 → 0.40). Inspecting the raw outputs explains why: the model emits **EOS at ~40–64 tokens**
 regardless of the cap, so `N_out` cannot be forced higher. The prefill-dominated result therefore
 holds for **natural** answer lengths; testing genuinely long generation requires EOS-disabled
-decoding (left to future work). *Figures:* `fig_v2_scaling_tpot/prefill/ttft/e2e/decode_share/panel`,
-`fig_v2_crossover_*`.
+decoding (left to future work).
+
+**Compressed-context companion sweep.** Reducing the context to 25% of its sentences reproduces the
+same curve on the shorter prompt lengths (e.g. 3B/Q4 at 488 tokens: TPOT 36.3 ms, prefill 1.56 s) —
+confirming that `TPOT`/prefill are governed by the **actual token count**, not the nominal retrieved
+length. *Figures:* `fig_v2_scaling_tpot/prefill/ttft/e2e/decode_share/panel`,
+`fig_v2_scaling_compressed`, `fig_v2_crossover_*`.
 
 ---
 

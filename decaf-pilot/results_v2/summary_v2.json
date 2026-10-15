@@ -12,6 +12,7 @@
     "fig_v2_scaling_decode_share.png",
     "fig_v2_scaling_peak_rss.png",
     "fig_v2_scaling_panel.png",
+    "fig_v2_scaling_compressed.png",
     "fig_v2_crossover_decode_share.png",
     "fig_v2_crossover_length.png",
     "fig_v2_h5_prefix.png",
@@ -505,6 +506,32 @@
       "prefill_ms_per_tok": 10.542
     }
   ],
+  "scaling_compressed": {
+    "3B / Q4_K_M": {
+      "ratio": 0.25,
+      "median_prompt_tokens": 488.0,
+      "median_tpot_ms": 36.298859375,
+      "median_prefill_ms": 1558.72
+    },
+    "3B / Q8_0": {
+      "ratio": 0.25,
+      "median_prompt_tokens": 488.0,
+      "median_tpot_ms": 59.70440625,
+      "median_prefill_ms": 1441.6950000000002
+    },
+    "7B / Q4_K_M": {
+      "ratio": 0.25,
+      "median_prompt_tokens": 488.0,
+      "median_tpot_ms": 78.66554687499999,
+      "median_prefill_ms": 3491.126
+    },
+    "7B / Q8_0": {
+      "ratio": 0.25,
+      "median_prompt_tokens": 488.0,
+      "median_tpot_ms": 140.74196875,
+      "median_prefill_ms": 3521.7745
+    }
+  },
   "h5_prefix": {
     "3B / Q4_K_M|L=2048": {
       "cold": 8399.201187501603,

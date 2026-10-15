@@ -121,6 +121,8 @@ def main() -> None:
 
     sc = pd.DataFrame(JsonlCache(os.path.join(ROOT, cfg["paths"]["scaling_cache"]),
                                  ["model", "mode", "L", "rep"]).all())
+    scc = pd.DataFrame(JsonlCache(os.path.join(ROOT, cfg["paths"]["scaling_compressed_cache"]),
+                                  ["model", "L", "ratio", "rep"]).all())
     cx = pd.DataFrame(JsonlCache(os.path.join(ROOT, cfg["paths"]["crossover_cache"]),
                                  ["model", "L", "num_predict", "rep"]).all())
     cp = pd.DataFrame(JsonlCache(os.path.join(ROOT, cfg["paths"]["compress_cache"]),
@@ -242,6 +244,42 @@ def main() -> None:
         fig.tight_layout(); fig.savefig(os.path.join(out, "fig_v2_scaling_panel.png"), bbox_inches="tight"); plt.close(fig)
         summary["figures"].append("fig_v2_scaling_panel.png")
     _safe("panel", fig_scaling_panel, log)
+
+    # ================= compressed-context scaling (E1) =================
+    if not scc.empty:
+        def fig_scaling_compressed():
+            fig, ax = plt.subplots(1, 2, figsize=(11, 4.0))
+            for m in models:
+                full = S[S["model"] == m["label"]].sort_values("prompt_tokens")
+                c = scc[scc["model"] == m["name"]].groupby("L").agg(
+                    prompt_tokens=("prompt_tokens", "median"), tpot_ms=("tpot_ms", "median"),
+                    prefill_ms=("prefill_ms", "median")).reset_index().sort_values("prompt_tokens")
+                if full.empty or c.empty:
+                    continue
+                ax[0].plot(full["prompt_tokens"], full["tpot_ms"], "o-", color=mcolor[m["label"]], ms=4,
+                           label=f"{m['label']} full")
+                ax[0].plot(c["prompt_tokens"], c["tpot_ms"], "x--", color=mcolor[m["label"]], ms=5,
+                           label=f"{m['label']} comp")
+                ax[1].plot(full["prompt_tokens"], full["prefill_ms"], "o-", color=mcolor[m["label"]], ms=4)
+                ax[1].plot(c["prompt_tokens"], c["prefill_ms"], "x--", color=mcolor[m["label"]], ms=5)
+            ax[0].set_xlabel("actual prompt tokens"); ax[0].set_ylabel("TPOT (ms/token)")
+            ax[0].set_title("TPOT: full vs compressed context"); ax[0].legend(fontsize=6)
+            ax[1].set_xlabel("actual prompt tokens"); ax[1].set_ylabel("prefill (ms)")
+            ax[1].set_title("Prefill: full vs compressed context")
+            fig.tight_layout(); fig.savefig(os.path.join(out, "fig_v2_scaling_compressed.png")); plt.close(fig)
+            summary["figures"].append("fig_v2_scaling_compressed.png")
+        _safe("scaling_compressed", fig_scaling_compressed, log)
+
+        summary["scaling_compressed"] = {}
+        for m in models:
+            g = scc[scc["model"] == m["name"]]
+            if g.empty:
+                continue
+            summary["scaling_compressed"][m["label"]] = {
+                "ratio": float(g["ratio"].median()),
+                "median_prompt_tokens": float(g["prompt_tokens"].median()),
+                "median_tpot_ms": float(g["tpot_ms"].median()),
+                "median_prefill_ms": float(g["prefill_ms"].median())}
 
     # ================= crossover (H1) =================
     if not cx.empty:
