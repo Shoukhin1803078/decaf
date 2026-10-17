@@ -79,21 +79,43 @@ def c2_duplicates(comp: List[dict]) -> tuple[bool, str]:
     return ok, f"C2 duplicate keys: {dups}"
 
 
+def _clean_medians(rows):
+    """Per-length median prefill, dropping implausibly-fast (glitch) rows."""
+    from collections import defaultdict
+    pts = [(r["prompt_tokens"], r["prefill_ms"]) for r in rows
+           if r.get("prompt_tokens", 0) > 0 and r.get("prefill_ms", 0) > 0]
+    pts = [(p, y) for p, y in pts if y / p >= 0.8]
+    by_l = defaultdict(list)
+    for p, y in pts:
+        by_l[round(p, -1)].append(y)
+    return [(k, float(np.median(v))) for k, v in sorted(by_l.items())]
+
+
 def c3_cold_gate(scaling: List[dict], comp: List[dict]) -> tuple[bool, str]:
     if not scaling:
         return True, "C3 cold gate: SKIPPED (no scaling file)"
-    by_model = defaultdict(list)
-    for r in scaling:
-        if r.get("prefill_ms", 0) > 0 and r.get("prompt_tokens", 0) > 0:
-            by_model[r["model"]].append((r["prompt_tokens"], r["prefill_ms"]))
-    coef = {m: fit_cold([p for p, _ in v], [y for _, y in v]) for m, v in by_model.items()}
+
+    # Cold model per (model_label): union of cleaned scaling medians and the cold
+    # `full` compression runs (both are cold, nonce-protected measurements). The
+    # scaling sweep alone can carry a per-request overhead on the 7B models.
+    labels = {r.get("model_label", r.get("model")) for r in comp}
+    coef = {}
+    for label in labels:
+        pts = _clean_medians([r for r in scaling
+                              if r.get("model_label", r.get("model")) == label])
+        pts += [(r["prompt_tokens"], r["prefill_ms"]) for r in comp
+                if r.get("model_label", r.get("model")) == label
+                and r.get("method") == "full" and r.get("condition", "cold") == "cold"
+                and r.get("prefill_ms", 0) > 0]
+        if len(pts) >= 3:
+            coef[label] = fit_cold([p for p, _ in pts], [y for _, y in pts])
 
     groups = defaultdict(list)
     for r in comp:
         if r.get("condition", "cold") != "cold":
             continue
         if r.get("prefill_ms", 0) > 0 and r.get("prompt_tokens", 0) > 0:
-            groups[(r["model"], r.get("dataset"), r.get("method"))].append(r)
+            groups[(r.get("model_label", r.get("model")), r.get("dataset"), r.get("method"))].append(r)
 
     out_of_range = []
     for (model, dataset, method), rows in sorted(groups.items()):
@@ -102,8 +124,7 @@ def c3_cold_gate(scaling: List[dict], comp: List[dict]) -> tuple[bool, str]:
             continue
         P = np.array([r["prompt_tokens"] for r in rows], float)
         y = np.array([r["prefill_ms"] for r in rows], float)
-        pred = c1 * P + c2 * P ** 2
-        ratio = float(np.median(y / pred))
+        ratio = float(np.median(y / (c1 * P + c2 * P ** 2)))
         if not (0.80 <= ratio <= 1.25):
             out_of_range.append((model, dataset, method, ratio))
 

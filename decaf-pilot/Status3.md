@@ -94,6 +94,9 @@ Implemented in `src/run_v3.py` (new) + small edits to `src/llm.py`
 | 2026-10-17 | 20-question pilot (3B/Q4, hotpot, cold + warm) | ✅ cold gate PASS; inflation 1.8–2.2× (see §6) |
 | 2026-10-17 | Audit gate on pilot cold data | **ALL CHECKS PASSED** (v2: 5 failed) |
 | 2026-10-17 | Launched main cold grid + warm-order pass (n=50) | running |
+| 2026-10-17 | 3B/Q4 cold complete (4 datasets); 7B/Q4 running | 2,003 cold rows |
+| 2026-10-17 | Diagnosed cold-model fits: 7B scaling overhead + near-zero-prefill glitch rows | fixed via union fit + stricter timer guard |
+| 2026-10-17 | Audit gate re-run after cold-model fix | **ALL CHECKS PASSED** (C3 0/42) |
 
 ### Scope notes (documented deviations)
 
@@ -138,3 +141,60 @@ Audit gate (pilot cold): `ALL CHECKS PASSED` — C1 0 invalid rows, C3 0/10 grou
 
 *Caveat:* n=20 pilot only; the full grid at n=50 (running) is needed to confirm per-dataset
 inflation and cold S_net.
+
+---
+
+## 7. Main-grid results (cold, n=50) — current state
+
+Coverage: 3B/Q4 complete (4 datasets); 7B/Q4 hotpot + 2Wiki complete, TriviaQA/LongBench running.
+Warm-order: 3B/Q4 HotpotQA pilot (n=20). 2,003 cold rows cached.
+
+### 7.1 Cold S_net (per-question, matched, geometric mean)
+
+| method | 3B Hotpot | 3B 2Wiki | 3B Trivia | 3B LongBench | 7B Hotpot | 7B 2Wiki |
+|---|---:|---:|---:|---:|---:|---:|
+| `bm25_decaf_lam6` | **2.36** | **2.15** | **2.23** | **1.86** | **2.75** | **2.22** |
+| `decaf_lam6` | 1.57 | 1.63 | 1.93 | 1.59 | 2.12 | 2.07 |
+| `rel_iso` | 1.57 | 1.62 | 1.80 | 1.56 | 2.14 | 2.05 |
+| `fixed_0.2` | 1.44 | 1.41 | 1.61 | 1.31 | 1.82 | 1.71 |
+| `llmlingua_0.2` | 1.10 | 1.22 | 1.30 | 1.18 | 1.28 | 1.20 |
+| `full` | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
+
+**H4 supported.** `bm25_decaf_lam6` leads every cell because its selector cost (~2 ms) is negligible
+against the cross-encoder's ~0.9 s. The gross→S_net gap is the compressor overhead.
+
+### 7.2 Quality (ΔF1 vs full, cold)
+
+| dataset | 3B (decaf_lam6) | 7B (decaf_lam6) | direction |
+|---|---:|---:|---|
+| HotpotQA | +0.073 | −0.039 | helps 3B / hurts 7B |
+| TriviaQA | +0.080 (p=0.037) | +0.096 | helps |
+| 2Wiki | −0.037 | −0.093 (p=0.027) | null / hurts |
+| LongBench | **−0.238 (p<0.001)** | *pending* | hurts sharply |
+
+**H5 replicates v2 with corrected statistics.** Compression helps the 3B on short contexts, is null
+on 2Wiki, hurts the 7B on multi-hop, and hurts LongBench for every config. `llmlingua_0.2` is the
+weakest on quality (7B Hotpot −0.185, p=0.013).
+
+### 7.3 Cold model and gate
+
+The scaling sweep carried a per-request overhead on the 7B models and a few near-zero-prefill
+glitch rows (e.g. 66 ms for 8,598 tokens) that broke the origin-constrained fit. Fixed two ways:
+
+- **`_valid` timer guard** now also rejects implausibly-fast rows (`prefill/токens < 0.8`).
+- **Cold model** fit on the union of (cleaned scaling per-length medians) + (cold `full` compression
+  runs) — both cold, nonce-protected. Result: 3B/Q4 c1=3.29 (MAPE 1.4–6.0%), 7B/Q4 c1=8.02
+  (MAPE 2.4–11.8%).
+
+Audit gate after the fix: **ALL CHECKS PASSED** — C3 0/42 groups outside [0.80, 1.25].
+
+### 7.4 Break-even (quadratic cold model)
+
+| config | L_c | T_compress | L* quadratic | L* linear |
+|---|---:|---:|---:|---:|
+| 3B / Q4_K_M | 225 | 1029 ms | 379 | 381 |
+| 7B / Q4_K_M | 217 | 1023 ms | 219 | 219 |
+
+Over the bounded 32–4096 calibration the curvature is mild, so the two forms coincide.
+
+**Status:** 7B/Q4 TriviaQA + LongBench cold running; warm-order pass and Q8 extension queued.

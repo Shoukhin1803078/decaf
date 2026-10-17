@@ -124,8 +124,17 @@ def _generate(client: OllamaClient, prompt: str, sample_memory: bool = False) ->
 
 
 def _valid(t: dict) -> bool:
-    """FX-07 timer guard."""
-    return 0 < t.get("prefill_ms", 0) <= t.get("e2e_ms", float("inf")) and t.get("output_tokens", 0) > 0
+    """FX-07 timer guard + implausibly-fast glitch guard.
+
+    A CPU prefill cannot be faster than ~0.8 ms/token; near-zero ``prefill_ms``
+    for a large prompt is the cache-reuse / counter-glitch signature and must be
+    rejected, not stored.
+    """
+    pre = t.get("prefill_ms", 0)
+    tok = t.get("prompt_tokens", 0) or 1
+    return (0 < pre <= t.get("e2e_ms", float("inf"))
+            and t.get("output_tokens", 0) > 0
+            and pre / tok >= 0.8)
 
 
 def _generate_guarded(client: OllamaClient, prompt: str, tag: str,

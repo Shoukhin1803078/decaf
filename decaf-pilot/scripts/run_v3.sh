@@ -36,6 +36,29 @@ run_main() {
       --models "qwen2.5:3b-instruct,qwen2.5:7b-instruct-q4_K_M" --condition warm_order
 }
 
+run_extension() {
+  echo "=== Q8 extension (3B/Q8 + 7B/Q8, n=50, cold) ==="
+  $PY -m src.run_v3 --config $CFG --mode compression \
+      --models "qwen2.5:3b-instruct-q8_0,qwen2.5:7b-instruct-q8_0" --limit 50 --condition cold
+}
+
+run_ablation() {
+  echo "=== ablation arm (decaf variants cold, hotpot+2wiki+trivia+longbench) ==="
+  $PY -m src.run_v3 --config $CFG --mode compression \
+      --models "qwen2.5:3b-instruct,qwen2.5:7b-instruct-q4_K_M" --limit 50 --condition cold \
+      --methods "decaf_nocov_lam6,decaf_noreorder_lam6,decaf_lam2,decaf_lam15" \
+      --cache cache_v3/compression_ablation.jsonl
+}
+
+run_topk() {
+  echo "=== top_k sweep (hotpot + longbench, k in {5,10,20}) ==="
+  for K in 10 20; do
+    $PY -m src.run_v3 --config $CFG --mode compression \
+        --models "qwen2.5:3b-instruct,qwen2.5:7b-instruct-q4_K_M" --datasets "hotpot,longbench" \
+        --limit 50 --condition cold --top-k $K --cache cache_v3/compression_topk.jsonl
+  done
+}
+
 gate() {
   echo "=== audit gate ==="
   $PY -I audit_gate.py --scaling cache_v3/scaling.jsonl \
@@ -43,9 +66,12 @@ gate() {
 }
 
 case "$MODE" in
-  pilot) run_scaling; run_pilot; gate ;;
-  main)  run_scaling; run_main; gate ;;
-  all)   run_scaling; run_pilot; gate; run_main; gate ;;
+  pilot)     run_scaling; run_pilot; gate ;;
+  main)      run_scaling; run_main; gate ;;
+  extension) run_extension ;;
+  ablation)  run_ablation ;;
+  topk)      run_topk ;;
+  all)       run_scaling; run_pilot; gate; run_main; gate; run_extension; run_ablation ;;
   *) echo "unknown mode: $MODE"; exit 1 ;;
 esac
 
