@@ -1,0 +1,133 @@
+seed: 42
+
+data:
+  hotpot:
+    tag: hotpot
+    hf_name: hotpotqa/hotpot_qa
+    hf_config: distractor
+    split: validation
+    n_questions: 100
+  twowiki:
+    tag: twowiki
+    hf_name: framolfese/2WikiMultihopQA
+    hf_config: null
+    split: validation
+    n_questions: 100
+  trivia:
+    tag: trivia
+    hf_name: mandarjoshi/trivia_qa
+    hf_config: rc.wikipedia
+    split: validation
+    n_questions: 100
+    loader: trivia
+  longbench:
+    tag: longbench
+    hf_name: Xnhyacinth/LongBench
+    hf_config: hotpotqa
+    split: test
+    n_questions: 100
+    loader: longbench
+  cache_dir: data_v2
+
+retriever: bm25
+top_k: 5
+top_k_sweep: [5, 10, 20]
+
+models:
+  - name: qwen2.5:3b-instruct
+    label: "3B / Q4_K_M"
+    family: "3B"
+    quant: "Q4_K_M"
+  - name: qwen2.5:3b-instruct-q8_0
+    label: "3B / Q8_0"
+    family: "3B"
+    quant: "Q8_0"
+  - name: qwen2.5:7b-instruct-q4_K_M
+    label: "7B / Q4_K_M"
+    family: "7B"
+    quant: "Q4_K_M"
+  - name: qwen2.5:7b-instruct-q8_0
+    label: "7B / Q8_0"
+    family: "7B"
+    quant: "Q8_0"
+
+# E1/E8: decode-scaling curve TPOT(L) — extended to 32 tokens with 5 reps.
+# Range bounded to 4096: full-context prompts are ~860-1220 tokens, so the cold
+# calibration needs coverage only to ~2K; larger points are luxury and cost
+# minutes each on the 7B models. 3B rows already collected beyond 4096 are kept.
+scaling:
+  lengths: [32, 64, 96, 128, 192, 256, 512, 1024, 2048, 4096]
+  replicates: 5
+  question: "Describe in detail how a bicycle works, listing its main parts and what each does."
+
+# E1: compressed-context TPOT(L) curve (full vs 25% compressed)
+scaling_compressed:
+  lengths: [256, 512, 1024, 2048, 4096, 8192]
+  replicates: 5
+  ratio: 0.25
+
+# E8: CPU utilization + achieved-bandwidth telemetry (roofline)
+e8:
+  lengths: [512, 2048, 8192]
+  replicates: 3
+
+# H1: generation-length crossover sweep
+crossover:
+  lengths: [512, 2048, 8192]
+  num_predict: [16, 64, 128, 256, 512]
+  replicates: 2
+  question: "Describe in detail how a bicycle works, listing its main parts and what each does."
+
+# E2/E3/E4/E7 + Sec.17 ablation: compression methods
+# Main grid methods (all run on ALL datasets at n=100, both conditions)
+compression:
+  methods: [full, decaf_lam6, fixed_0.2, rel_iso, bm25_decaf_lam6, llmlingua_0.2]
+  ablations: [decaf_nocov_lam6, decaf_noreorder_lam6, decaf_lam2, decaf_lam15]
+  decaf_primary: decaf_lam6
+  lambda: 1.5
+  fixed_ratios: [0.5, 0.2]
+
+# Warm-order methods (subset, for inflation measurement only)
+compression_warm_methods: [full, decaf_lam6, fixed_0.2, rel_iso, bm25_decaf_lam6]
+
+# Conditions: cold = nonce at char 0, shuffled order; warm_order = no nonce, full first
+conditions: [cold, warm_order]
+
+# H5 secondary analysis: llama.cpp prefix/KV cache reuse
+h5:
+  prefix_lengths: [2048, 8192]
+  replicates: 3
+
+# Sec.13 retrieval-mode study (BM25 vs dense vs hybrid top-k)
+retrieval:
+  retrievers: [dense, hybrid]
+  dense_model: "BAAI/bge-small-en-v1.5"
+  methods: [full, fixed_0.5, decaf_lam6]
+  n_questions: 30
+
+scorer:
+  cross_encoder: BAAI/bge-reranker-base
+  max_length: 512
+  warmup_calls: 5
+
+ollama:
+  host: http://localhost:11434
+  temperature: 0.0
+  num_predict: 32
+  num_ctx: 20480
+  num_thread: 8
+  num_batch: 512
+  timeout: 3600
+  logprobs: false
+
+paths:
+  scaling_cache: cache_v3/scaling.jsonl
+  scaling_compressed_cache: cache_v3/scaling_compressed.jsonl
+  e8_cache: cache_v3/e8.jsonl
+  crossover_cache: cache_v3/crossover.jsonl
+  compress_cache: cache_v3/compression.jsonl
+  compress_warm_cache: cache_v3/compression_warm.jsonl
+  ce_cache: cache_v3/ce_scores
+  h5_cache: cache_v3/h5_prefix.jsonl
+  retrieval_cache: cache_v3/retrieval.jsonl
+  results: results_v3

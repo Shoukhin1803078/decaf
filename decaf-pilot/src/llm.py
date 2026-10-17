@@ -16,6 +16,18 @@ import requests
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 
+def with_nonce(prompt: str, tag: str) -> str:
+    """Prepend a unique nonce as the FIRST characters of the text sent.
+
+    The nonce must be at character 0 of the whole prompt (not inside the
+    context, not after the template) so no two requests share a leading prefix
+    and llama.cpp's prompt-prefix cache cannot reuse prefill across runs.
+    """
+    import uuid
+
+    return f"[run {uuid.uuid4().hex[:12]}-{tag}]\n" + prompt
+
+
 def build_prompt(question: str, contexts: List[str], titles: Optional[List[str]] = None) -> str:
     """Context-grounded prompt; empty context => closed-book (no retrieval)."""
     if not contexts:
@@ -47,6 +59,8 @@ class OllamaClient:
         self.timeout = cfg["ollama"].get("timeout", 300)
         self.logprobs = cfg["ollama"].get("logprobs", True)
         self.num_ctx = cfg["ollama"].get("num_ctx")
+        self.num_thread = cfg["ollama"].get("num_thread")
+        self.num_batch = cfg["ollama"].get("num_batch")
 
     def ping(self) -> bool:
         try:
@@ -69,6 +83,8 @@ class OllamaClient:
                 "num_predict": self.num_predict,
                 "seed": 0,
                 **({"num_ctx": self.num_ctx} if self.num_ctx else {}),
+                **({"num_thread": self.num_thread} if self.num_thread else {}),
+                **({"num_batch": self.num_batch} if self.num_batch else {}),
             },
         }
         t0 = time.perf_counter()
