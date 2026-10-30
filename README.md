@@ -6,7 +6,7 @@ Research project for the proposal *"When Does Context Compression Accelerate CPU
 RAG? A Decode-Centric Study with Adaptive Evidence Selection"* — a controlled study
 of how retrieved-context length and training-free compression affect TTFT, per-token
 decode latency (TPOT), end-to-end latency, memory and grounding for small quantized
-LLMs running **entirely on CPU**.
+LLMs running 
 
 ## Repository layout
 
