@@ -1,6 +1,6 @@
 # DECAF
 
-**Decode-Centric Adaptive evidence selection For CPU-only RAG.**
+**Decode-Centric Adaptive evidence selection For RAG.**
 
 Research project for the proposal *"When Does Context Compression Accelerate CPU
 RAG? A Decode-Centric Study with Adaptive Evidence Selection"* — a controlled study
